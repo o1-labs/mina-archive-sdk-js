@@ -41,6 +41,7 @@ Each method on `ArchiveClient` maps 1:1 to a GraphQL query in the [Archive-Node-
 | `getActions(input)` | `ActionOutput[]` | Actions dispatched from a zkApp account. |
 | `getNetworkState()` | `NetworkStateOutput` | Archive's max canonical and pending block heights. |
 | `getBlocks({ query?, limit?, sortBy? })` | `Block[]` | Blocks filtered by height/date range and chain status, with full transaction detail. |
+| `getVerificationKeyUpdates(input)` | `VerificationKeyUpdate[]` | Applied account updates that set a given verification key, within a required block range. |
 | `query(gql)` | builder | Run arbitrary GraphQL through the same retry path. |
 | `executeQuery(gql, vars, name)` | `unknown` | Low-level escape hatch returning the raw `data` field. |
 

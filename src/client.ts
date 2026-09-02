@@ -18,6 +18,7 @@ import {
   BLOCKS_QUERY,
   EVENTS_QUERY,
   NETWORK_STATE_QUERY,
+  VERIFICATION_KEY_UPDATES_QUERY,
 } from './queries.js';
 import type {
   ActionFilterOptionsInput,
@@ -28,6 +29,8 @@ import type {
   EventFilterOptionsInput,
   EventOutput,
   NetworkStateOutput,
+  VerificationKeyUpdate,
+  VerificationKeyUpdateFilterInput,
 } from './types.js';
 
 export interface ClientConfig {
@@ -235,6 +238,27 @@ export class ArchiveClient {
       throw new MissingFieldError('getBlocks', 'blocks');
     }
     return data.blocks;
+  }
+
+  /**
+   * Find applied account updates that set a given verification key.
+   *
+   * The block range is required and the server caps its width, so walk a wide
+   * history in pages rather than in one call.
+   */
+  async getVerificationKeyUpdates(
+    input: VerificationKeyUpdateFilterInput,
+  ): Promise<VerificationKeyUpdate[]> {
+    const data = await this.executeQuery<{
+      verificationKeyUpdates?: VerificationKeyUpdate[] | null;
+    }>(VERIFICATION_KEY_UPDATES_QUERY, { input }, 'getVerificationKeyUpdates');
+    if (!data.verificationKeyUpdates) {
+      throw new MissingFieldError(
+        'getVerificationKeyUpdates',
+        'verificationKeyUpdates',
+      );
+    }
+    return data.verificationKeyUpdates;
   }
 }
 

@@ -131,3 +131,33 @@ export const BLOCKS_QUERY = `
     }
   }
 `;
+
+export const VERIFICATION_KEY_UPDATES_QUERY = `
+  query GetVerificationKeyUpdates($input: VerificationKeyUpdateFilterInput!) {
+    verificationKeyUpdates(input: $input) {
+      accountUpdateId
+      address
+      tokenId
+      verificationKeyHash
+      blockInfo {
+        height
+        stateHash
+        parentHash
+        ledgerHash
+        chainStatus
+        timestamp
+        globalSlotSinceHardfork
+        globalSlotSinceGenesis
+        distanceFromMaxBlockHeight
+      }
+      transactionInfo {
+        status
+        hash
+        memo
+        authorizationKind
+        sequenceNumber
+        zkappAccountUpdateIds
+      }
+    }
+  }
+`;

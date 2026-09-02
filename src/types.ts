@@ -31,6 +31,23 @@ export interface ActionFilterOptionsInput {
   endActionState?: string;
 }
 
+/**
+ * Filter for `verificationKeyUpdates`.
+ *
+ * Unlike the event and action filters, the block range is required: the server
+ * bounds the span by its configured `BLOCK_RANGE_SIZE`. `from` is inclusive and
+ * `to` is exclusive.
+ */
+export interface VerificationKeyUpdateFilterInput {
+  /** The verification-key hash to search for, as a field element string. */
+  verificationKeyHash: string;
+  /** Mina block height to search from, inclusive. */
+  from: number;
+  /** Mina block height to search to, exclusive. */
+  to: number;
+  status?: BlockStatusFilter;
+}
+
 export interface BlockQueryInput {
   blockHeight_gte?: number;
   blockHeight_lt?: number;
@@ -93,6 +110,17 @@ export interface ActionOutput {
   transactionInfo: TransactionInfo | null;
   actionData: (ActionData | null)[] | null;
   actionState: ActionStates;
+}
+
+/** An applied account update that set a verification key. */
+export interface VerificationKeyUpdate {
+  accountUpdateId: string;
+  /** The account whose verification key was set. */
+  address: string;
+  tokenId: string;
+  verificationKeyHash: string;
+  blockInfo: BlockInfo;
+  transactionInfo: TransactionInfo;
 }
 
 export interface MaxBlockHeightInfo {

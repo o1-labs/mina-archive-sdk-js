@@ -117,6 +117,76 @@ test('getBlocks: passes optional filters as null when omitted', async () => {
   assert.equal(parsed.variables.sortBy, null);
 });
 
+test('getVerificationKeyUpdates: happy path', async () => {
+  const sample = [
+    {
+      accountUpdateId: '42',
+      address: 'B62qtest',
+      tokenId: 'wSHV2S4qX9jFsLjQo8r1BsMLH2ZRKsZx6EJd1sbozGPieEC4Jf',
+      verificationKeyHash:
+        '2732298346754781834759238475982374598237459823745982374598237459',
+      blockInfo: {
+        height: 100,
+        stateHash: 'sh',
+        parentHash: 'ph',
+        ledgerHash: 'lh',
+        chainStatus: 'canonical',
+        timestamp: '0',
+        globalSlotSinceHardfork: 0,
+        globalSlotSinceGenesis: 0,
+        distanceFromMaxBlockHeight: 1,
+      },
+      transactionInfo: {
+        status: 'applied',
+        hash: 'txhash',
+        memo: '',
+        authorizationKind: 'Proof',
+        sequenceNumber: 0,
+        zkappAccountUpdateIds: [42],
+      },
+    },
+  ];
+  const client = new ArchiveClient('http://x/graphql', {
+    retries: 1,
+    fetch: fakeFetch([jsonResponse({ data: { verificationKeyUpdates: sample } })]),
+  });
+  const result = await client.getVerificationKeyUpdates({
+    verificationKeyHash: '2732298346754781834759238475982374598237459823745982374598237459',
+    from: 1,
+    to: 1000,
+  });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].address, 'B62qtest');
+  assert.equal(result[0].blockInfo.height, 100);
+});
+
+test('getVerificationKeyUpdates: sends the filter as the input variable', async () => {
+  let sentBody: string | null = null;
+  const captureFetch: typeof fetch = async (_url, init) => {
+    sentBody = init?.body as string;
+    return jsonResponse({ data: { verificationKeyUpdates: [] } });
+  };
+  const client = new ArchiveClient('http://x/graphql', {
+    retries: 1,
+    fetch: captureFetch,
+  });
+  await client.getVerificationKeyUpdates({
+    verificationKeyHash: 'vk',
+    from: 10,
+    to: 20,
+    status: 'CANONICAL',
+  });
+  assert.ok(sentBody);
+  const parsed = JSON.parse(sentBody);
+  assert.deepEqual(parsed.variables.input, {
+    verificationKeyHash: 'vk',
+    from: 10,
+    to: 20,
+    status: 'CANONICAL',
+  });
+  assert.match(parsed.query, /verificationKeyUpdates\(input: \$input\)/);
+});
+
 test('GraphQL error: throws GraphqlError, does not retry', async () => {
   let calls = 0;
   const f: typeof fetch = async () => {
