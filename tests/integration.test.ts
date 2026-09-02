@@ -19,6 +19,10 @@ const URI = process.env.ARCHIVE_GRAPHQL_URI;
 const FIXTURE_ADDRESS =
   'B62qiaEMrWiYdK7LcJ2ScdMyG8LzUxi7yaw17XvBD34on7UKfhAkRML';
 
+/** The single verification key in the upstream sample archive dump. */
+const FIXTURE_VERIFICATION_KEY_HASH =
+  '330109536550383627416201330124291596191867681867265169258470531313815097966';
+
 if (!URI) {
   test('skip: ARCHIVE_GRAPHQL_URI not set', () => {
     assert.ok(true);
@@ -79,6 +83,18 @@ if (!URI) {
         blocks[0].blockHeight >= blocks[1].blockHeight,
         'sortBy DESC honored',
       );
+    }
+  });
+
+  test('verificationKeyUpdates query returns array (zero rows is fine)', async () => {
+    const updates = await client.getVerificationKeyUpdates({
+      verificationKeyHash: FIXTURE_VERIFICATION_KEY_HASH,
+      from: 1,
+      to: 1000,
+    });
+    assert.ok(Array.isArray(updates));
+    for (const update of updates) {
+      assert.equal(update.verificationKeyHash, FIXTURE_VERIFICATION_KEY_HASH);
     }
   });
 }
