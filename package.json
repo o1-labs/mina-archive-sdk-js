@@ -1,6 +1,6 @@
 {
   "name": "@o1-labs/mina-archive-sdk",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "TypeScript/JavaScript SDK for interacting with Mina Archive Node GraphQL endpoints",
   "repository": {
     "type": "git",
