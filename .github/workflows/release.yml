@@ -40,7 +40,12 @@ jobs:
       # npm >= 11.5.1. Node 20 ships npm 10.x, which signs provenance via
       # GitHub OIDC but cannot authenticate the publish itself, so the
       # registry rejects the PUT with a 404. Upgrade before publishing.
-      - run: npm install -g npm@latest
+      #
+      # Pin the major instead of tracking `latest`: npm 12 raised its Node
+      # floor to ^22.22.2 || ^24.15.0 || >=26.0.0, so `npm@latest` fails with
+      # EBADENGINE against the Node version pinned above. npm 11 accepts
+      # ^20.17.0 || >=22.9.0. This matches Archive-Node-API's publish job.
+      - run: npm install -g npm@11
       - run: npm --version
 
       - run: npm ci
