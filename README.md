@@ -1,5 +1,9 @@
 # @o1-labs/mina-archive-sdk
 
+[![CI](https://github.com/o1-labs/mina-archive-sdk-js/actions/workflows/ci.yml/badge.svg)](https://github.com/o1-labs/mina-archive-sdk-js/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40o1-labs%2Fmina-archive-sdk?logo=npm)](https://www.npmjs.com/package/@o1-labs/mina-archive-sdk)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
+
 TypeScript / JavaScript SDK for [Mina Protocol's Archive Node](https://github.com/o1-labs/Archive-Node-API) GraphQL endpoint.
 
 Companion to the daemon-targeting SDKs [`MinaProtocol/mina-sdk-rust`](https://github.com/MinaProtocol/mina-sdk-rust) / [`mina-sdk-go`](https://github.com/MinaProtocol/mina-sdk-go) / [`mina-sdk-python`](https://github.com/MinaProtocol/mina-sdk-python). This SDK targets the separate **archive** endpoint defined by [`o1-labs/Archive-Node-API`](https://github.com/o1-labs/Archive-Node-API) (events, actions, blocks, network state).
