@@ -162,18 +162,43 @@ export interface FeeTransfer {
   type: string;
 }
 
+/**
+ * Transactions attached to a block.
+ *
+ * Only `coinbase` is populated by a stock server. The other three arrays
+ * require the server to set `ENABLE_BLOCK_TRANSACTION_DETAILS=true`, which
+ * **defaults to `false`**, and are `[]` otherwise. `Block.parentHash` is `""`
+ * under the same flag.
+ */
 export interface BlockTransactions {
-  /** Coinbase amount as a nanomina decimal string. */
+  /**
+   * Coinbase amount as a nanomina decimal string. Populated regardless of
+   * `ENABLE_BLOCK_TRANSACTION_DETAILS`.
+   */
   coinbase: string;
+  /** Empty unless the server sets `ENABLE_BLOCK_TRANSACTION_DETAILS=true`. */
   userCommands: UserCommand[];
+  /** Empty unless the server sets `ENABLE_BLOCK_TRANSACTION_DETAILS=true`. */
   zkappCommands: ZkAppCommand[];
+  /** Empty unless the server sets `ENABLE_BLOCK_TRANSACTION_DETAILS=true`. */
   feeTransfer: FeeTransfer[];
 }
 
+/**
+ * A block.
+ *
+ * Transaction detail is gated behind the server's
+ * `ENABLE_BLOCK_TRANSACTION_DETAILS`, which **defaults to `false`**. Against a
+ * stock server `parentHash` is `""` and `transactions.userCommands`,
+ * `.zkappCommands` and `.feeTransfer` are all `[]`, while
+ * `transactions.coinbase` **is** populated — so the response looks healthy and
+ * is easily mistaken for an empty chain or an SDK bug.
+ */
 export interface Block {
   blockHeight: number;
   creator: string;
   stateHash: string;
+  /** `""` unless the server sets `ENABLE_BLOCK_TRANSACTION_DETAILS=true`. */
   parentHash: string;
   /** ISO-8601 timestamp. */
   dateTime: string;
