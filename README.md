@@ -16,6 +16,15 @@ npm install @o1-labs/mina-archive-sdk
 
 Requires Node ≥ 20.18.
 
+The package ships as **ES modules**. `import` is the native form:
+
+```js
+import { ArchiveClient } from '@o1-labs/mina-archive-sdk';
+```
+
+CommonJS consumers can `require()` it on Node ≥ 20.19 or ≥ 22.12, which support
+requiring an ES module. On older Node, use a dynamic `import()` instead.
+
 ## Quick start
 
 ```ts
