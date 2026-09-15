@@ -35,6 +35,7 @@ export {
   InvalidCurrencyError,
   MissingFieldError,
 } from './errors.js';
+export { ErrorCode } from './errors.js';
 export type { GraphqlErrorEntry } from './errors.js';
 
 export {
