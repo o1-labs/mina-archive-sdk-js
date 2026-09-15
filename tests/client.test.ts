@@ -569,3 +569,65 @@ test('429 is retried, honouring retry-after', async () => {
   await client.getNetworkState();
   assert.equal(calls, 2);
 });
+
+// HTTP 200 with BOTH a partial data payload and an errors array is a normal
+// GraphQL outcome (#12). The client threw before ever looking at body.data,
+// so the rows the server did return were unreachable.
+test('GraphqlError carries partial data that arrived with the errors', async () => {
+  const sample = [
+    {
+      blockInfo: {
+        height: 100,
+        stateHash: '3NK',
+        parentHash: '3NL',
+        ledgerHash: 'jx',
+        chainStatus: 'canonical',
+        timestamp: '1692054601000',
+        globalSlotSinceHardfork: 1,
+        globalSlotSinceGenesis: 2,
+        distanceFromMaxBlockHeight: 3,
+      },
+      eventData: null,
+    },
+  ];
+  const client = new ArchiveClient('http://x/', {
+    retries: 1,
+    fetch: fakeFetch([
+      jsonResponse({
+        data: { events: sample },
+        errors: [{ message: 'Block range invalid' }],
+      }),
+    ]),
+  });
+
+  await assert.rejects(
+    () => client.getEvents({ address: 'B62q...' }),
+    (err: unknown) => {
+      assert.ok(err instanceof GraphqlError);
+      assert.ok(err.hasPartialData);
+      // The issue's acceptance criterion.
+      const data = err.data as { events: unknown[] };
+      assert.equal(data.events.length, 1);
+      return true;
+    },
+  );
+});
+
+// data: null alongside errors is a total failure, not a partial one.
+test('data: null is not treated as partial data', async () => {
+  const client = new ArchiveClient('http://x/', {
+    retries: 1,
+    fetch: fakeFetch([
+      jsonResponse({ data: null, errors: [{ message: 'Unexpected error.' }] }),
+    ]),
+  });
+
+  await assert.rejects(
+    () => client.getEvents({ address: 'B62q...' }),
+    (err: unknown) => {
+      assert.ok(err instanceof GraphqlError);
+      assert.ok(!err.hasPartialData, 'data: null must not count as partial');
+      return true;
+    },
+  );
+});
