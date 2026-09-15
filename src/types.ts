@@ -86,6 +86,15 @@ export interface BlockInfo {
   parentHash: string;
   ledgerHash: string;
   chainStatus: string;
+  /**
+   * Unix epoch milliseconds as a decimal string, e.g. `"1692054601000"`.
+   *
+   * NOT ISO-8601 — `new Date(timestamp)` gives `Invalid Date`, which then
+   * propagates as `NaN` through date arithmetic instead of throwing. Parse
+   * with `Number()` first, or use {@link blockTimestampToDate}.
+   *
+   * Contrast {@link Block.dateTime}, which IS ISO-8601.
+   */
   timestamp: string;
   globalSlotSinceHardfork: number;
   globalSlotSinceGenesis: number;
@@ -175,7 +184,14 @@ export interface Block {
   creator: string;
   stateHash: string;
   parentHash: string;
-  /** ISO-8601 timestamp. */
+  /**
+   * ISO-8601 timestamp, e.g. `"2023-08-14T23:10:01.000Z"`. Safe to pass
+   * straight to `new Date()`.
+   *
+   * Contrast {@link BlockInfo.timestamp}, which is Unix epoch milliseconds as
+   * a decimal string. The server derives this field from the same archive
+   * column that `BlockInfo.timestamp` exposes raw.
+   */
   dateTime: string;
   transactions: BlockTransactions;
 }

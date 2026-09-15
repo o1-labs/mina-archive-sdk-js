@@ -64,6 +64,38 @@ const client = new ArchiveClient('https://archive.example/', {
 });
 ```
 
+### Dates and times
+
+The schema carries **two different time encodings**, a few fields apart, and both
+arrive as strings:
+
+| Field | Encoding | Example |
+| --- | --- | --- |
+| `BlockInfo.timestamp` | Unix epoch **milliseconds**, decimal string | `"1692054601000"` |
+| `Block.dateTime` | ISO-8601 | `"2023-08-14T23:10:01.000Z"` |
+
+`BlockInfo.timestamp` is a raw pass-through of the archive DB column, so the obvious
+call is quietly wrong:
+
+```js
+new Date('1692054601000')          // Invalid Date  -> NaN through any later maths
+new Date(Number('1692054601000'))  // 2023-08-14T23:10:01.000Z
+```
+
+On input, `dateTime_gte` / `dateTime_lt` must be ISO-8601. The server coerces them
+with `new Date(value).getTime()`, and a value it cannot parse becomes `NaN`, which
+reaches SQL as the string `"NaN"` and **matches nothing without erroring** — HTTP 200,
+empty list, no diagnostic anywhere.
+
+Two helpers make both cases safe, and throw instead of returning `NaN`:
+
+```ts
+import { blockTimestampToDate, toBlockDateTimeFilter } from '@o1-labs/mina-archive-sdk';
+
+blockTimestampToDate('1692054601000');            // Date 2023-08-14T23:10:01.000Z
+toBlockDateTimeFilter(new Date(1691971200000));   // "2023-08-14T00:00:00.000Z"
+```
+
 ### Currency helper
 
 The `Currency` type wraps nanomina amounts in a `bigint` for overflow-safe parsing of coinbase / fees / user-command amounts:
