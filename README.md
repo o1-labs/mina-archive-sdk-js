@@ -21,7 +21,7 @@ Requires Node ≥ 20.18.
 ```ts
 import { ArchiveClient } from '@o1-labs/mina-archive-sdk';
 
-const client = new ArchiveClient('https://archive.example/graphql');
+const client = new ArchiveClient('https://archive.example/');
 
 const events = await client.getEvents({
   address: 'B62q...',
@@ -34,6 +34,10 @@ for (const group of events) {
   console.log(`block ${group.blockInfo?.height}: ${group.eventData?.length ?? 0} events`);
 }
 ```
+
+> **The endpoint is the root path.** Archive-Node-API serves GraphQL at `/`, not
+> `/graphql`. Pass the base URL as-is — the SDK never appends a path, so a URL
+> ending in `/graphql` reaches a route the server does not serve and returns 404.
 
 ## API
 
@@ -52,7 +56,7 @@ Each method on `ArchiveClient` maps 1:1 to a GraphQL query in the [Archive-Node-
 ### Configuration
 
 ```ts
-const client = new ArchiveClient('https://archive.example/graphql', {
+const client = new ArchiveClient('https://archive.example/', {
   retries: 5,            // default: 3
   retryDelayMs: 10_000,  // default: 5_000
   timeoutMs: 60_000,     // default: 30_000
@@ -101,7 +105,7 @@ try {
 ## Examples
 
 ```sh
-ARCHIVE_GRAPHQL_URI=https://archive.example/graphql \
+ARCHIVE_GRAPHQL_URI=https://archive.example/ \
   npm run build && \
   node build/examples/network-state.js
 ```

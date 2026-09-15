@@ -2,11 +2,15 @@
  * `@o1-labs/mina-archive-sdk` — TypeScript SDK for the Mina Archive Node
  * GraphQL endpoint.
  *
+ * Archive-Node-API serves GraphQL at the root path `/`, not `/graphql`. Pass
+ * the base URL as-is — the SDK never appends a path, so a URL ending in
+ * `/graphql` returns 404.
+ *
  * @example
  * ```ts
  * import { ArchiveClient } from '@o1-labs/mina-archive-sdk';
  *
- * const client = new ArchiveClient('https://archive.example/graphql');
+ * const client = new ArchiveClient('https://archive.example/');
  * const events = await client.getEvents({
  *   address: 'B62q...',
  *   status: 'CANONICAL',

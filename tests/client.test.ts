@@ -330,3 +330,35 @@ test('rejects timeoutMs <= 0', () => {
     /timeoutMs/,
   );
 });
+
+// The endpoint is the server's root path `/` (#9). The documentation used to
+// say `/graphql`, which 404s. The client was never at fault, so pin that down:
+// whatever URL the caller supplies is the URL that gets POSTed, unchanged.
+test('posts the configured URL verbatim and never appends a path', async () => {
+  const cases = [
+    ['https://h/custom', '/custom'],
+    ['https://h/', '/'],
+    ['https://h', '/'],
+    ['https://h/graphql', '/graphql'],
+  ] as const;
+
+  for (const [configured, expectedPath] of cases) {
+    let seen: string | null = null;
+    const captureFetch: typeof fetch = async (url) => {
+      seen = String(url);
+      return jsonResponse({ data: { networkState: { maxBlockHeight: null } } });
+    };
+    const client = new ArchiveClient(configured, {
+      retries: 1,
+      fetch: captureFetch,
+    });
+    await client.getNetworkState();
+
+    assert.equal(seen, configured, `posted URL should equal ${configured}`);
+    assert.equal(
+      new URL(seen!).pathname,
+      expectedPath,
+      `${configured} should reach path ${expectedPath}`,
+    );
+  }
+});
