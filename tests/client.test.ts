@@ -423,3 +423,149 @@ test('a masked error has no code and does not throw on access', async () => {
     },
   );
 });
+
+// The rate limiter answers before GraphQL runs, with a GraphQL-shaped body and
+// three headers (#10). All of it was dropped: HttpError carried only status
+// and statusText, and every 4xx was retried on a fixed delay.
+test('429 surfaces the body, retry-after and the rate-limit budget', async () => {
+  let calls = 0;
+  const f: typeof fetch = async () => {
+    calls++;
+    return new Response(
+      JSON.stringify({
+        errors: [
+          {
+            message: 'Too many requests. Please retry later.',
+            extensions: { code: 'RATE_LIMITED' },
+          },
+        ],
+      }),
+      {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: {
+          'content-type': 'application/json',
+          'retry-after': '37',
+          'x-ratelimit-limit': '600',
+          'x-ratelimit-remaining': '0',
+        },
+      },
+    );
+  };
+
+  // retries: 1 so the call does not sleep through retry-after.
+  const client = new ArchiveClient('http://x/', { retries: 1, fetch: f });
+
+  await assert.rejects(
+    () => client.getNetworkState(),
+    (thrown: unknown) => {
+      // Criterion 1: the error, or its cause, is an HttpError with status 429.
+      const err =
+        thrown instanceof HttpError
+          ? thrown
+          : ((thrown as ConnectionError).cause as HttpError);
+      assert.ok(err instanceof HttpError);
+      assert.equal(err.status, 429);
+      // Criterion 2.
+      assert.equal(err.retryAfterSeconds, 37);
+      // Criterion 3. `extensions` is typed on GraphqlErrorEntry since #11,
+      // so this needs no cast.
+      assert.equal(err.errors[0].extensions?.code, ErrorCode.RateLimited);
+      // The budget headers, which the issue also lists as dropped.
+      assert.equal(err.limit, 600);
+      assert.equal(err.remaining, 0);
+      assert.ok(err.isRateLimited);
+      assert.ok(err.isRetryable);
+      return true;
+    },
+  );
+  assert.equal(calls, 1);
+});
+
+// Criterion 4: a 404 must cost exactly one request, not the whole budget.
+test('a 404 is not retried and reports the status directly', async () => {
+  let calls = 0;
+  const f: typeof fetch = async () => {
+    calls++;
+    return new Response('<!DOCTYPE html><html><body>Not Found</body></html>', {
+      status: 404,
+      statusText: 'Not Found',
+      headers: { 'content-type': 'text/html' },
+    });
+  };
+
+  const client = new ArchiveClient('http://x/', {
+    retries: 3,
+    retryDelayMs: 0,
+    fetch: f,
+  });
+
+  await assert.rejects(
+    () => client.getNetworkState(),
+    (thrown: unknown) => {
+      assert.ok(
+        thrown instanceof HttpError,
+        `a non-retryable status should surface as HttpError, got ${String(thrown)}`,
+      );
+      assert.equal(thrown.status, 404);
+      assert.ok(!thrown.isRetryable);
+      // Not JSON, so the raw body is kept instead of an errors array.
+      assert.match(thrown.body ?? '', /Not Found/);
+      return true;
+    },
+  );
+  assert.equal(calls, 1, 'a 404 must cost exactly one request');
+});
+
+// 5xx must still be retried — the fix must not turn every status into a
+// single-shot failure.
+test('5xx is still retried and can recover', async () => {
+  let calls = 0;
+  const f: typeof fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      return new Response('boom', { status: 503, statusText: 'Unavailable' });
+    }
+    return new Response(
+      JSON.stringify({
+        data: { networkState: { maxBlockHeight: null } },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  const client = new ArchiveClient('http://x/', {
+    retries: 3,
+    retryDelayMs: 0,
+    fetch: f,
+  });
+  await client.getNetworkState();
+  assert.equal(calls, 2);
+});
+
+// A 429 is retried, and retry-after is honoured rather than the fixed delay.
+test('429 is retried, honouring retry-after', async () => {
+  let calls = 0;
+  const f: typeof fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      return new Response(JSON.stringify({ errors: [{ message: 'slow' }] }), {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: { 'content-type': 'application/json', 'retry-after': '0' },
+      });
+    }
+    return new Response(
+      JSON.stringify({ data: { networkState: { maxBlockHeight: null } } }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  const client = new ArchiveClient('http://x/', {
+    retries: 3,
+    retryDelayMs: 0,
+    fetch: f,
+  });
+  await client.getNetworkState();
+  assert.equal(calls, 2);
+});

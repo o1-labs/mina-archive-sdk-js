@@ -122,9 +122,21 @@ export class ArchiveClient {
         clearTimeout(timer);
 
         if (!resp.ok) {
-          lastError = new HttpError(queryName, resp.status, resp.statusText);
+          const httpError = await buildHttpError(queryName, resp);
+
+          // Only 5xx, 408 and 429 are worth retrying. Every other 4xx is a
+          // defect in the request, and retrying it burned the whole budget
+          // before reporting a fault that was obvious on attempt one.
+          if (!httpError.isRetryable) {
+            throw httpError;
+          }
+
+          lastError = httpError;
           if (attempt < this.#config.retries) {
-            await sleep(this.#config.retryDelayMs);
+            // On a 429 the server has told us how long to wait. Honour it
+            // rather than hammering it again on our own fixed schedule.
+            const retryAfterMs = (httpError.retryAfterSeconds ?? 0) * 1000;
+            await sleep(Math.max(retryAfterMs, this.#config.retryDelayMs));
           }
           continue;
         }
@@ -144,6 +156,11 @@ export class ArchiveClient {
         clearTimeout(timer);
         if (err instanceof GraphqlError) {
           // Don't retry on GraphQL-level errors — they're deterministic.
+          throw err;
+        }
+        if (err instanceof HttpError && !err.isRetryable) {
+          // A non-retryable status was thrown above; let it out unwrapped so
+          // the caller sees the status rather than a ConnectionError.
           throw err;
         }
         lastError = err;
@@ -264,4 +281,50 @@ export class ArchiveClient {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Build an {@link HttpError} from a non-2xx response, reading the body and the
+ * rate-limit headers.
+ *
+ * Best-effort throughout: a body that is not JSON, or headers that are absent
+ * or malformed, leave the corresponding fields undefined rather than
+ * producing wrong values.
+ */
+async function buildHttpError(
+  queryName: string,
+  resp: Response,
+): Promise<HttpError> {
+  const headerNumber = (name: string): number | undefined => {
+    const raw = resp.headers.get(name);
+    if (raw === null) return undefined;
+    const n = Number(raw.trim());
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
+
+  let text = '';
+  try {
+    text = await resp.text();
+  } catch {
+    // A body that cannot be read must not mask the status.
+  }
+
+  let errors: GraphqlErrorEntry[] = [];
+  try {
+    const parsed = JSON.parse(text) as { errors?: GraphqlErrorEntry[] };
+    if (Array.isArray(parsed.errors)) errors = parsed.errors;
+  } catch {
+    // Not JSON — a 404 HTML page, for instance. Keep the raw body instead.
+  }
+
+  return new HttpError(
+    queryName,
+    resp.status,
+    resp.statusText,
+    errors,
+    headerNumber('retry-after'),
+    headerNumber('x-ratelimit-limit'),
+    headerNumber('x-ratelimit-remaining'),
+    errors.length === 0 ? text.slice(0, 200) : undefined,
+  );
 }

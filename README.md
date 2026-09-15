@@ -143,13 +143,44 @@ try {
 } catch (err) {
   if (err instanceof GraphqlError) {
     // Server-side validation, malformed query, etc. Not retried.
+  } else if (err instanceof HttpError) {
+    // A non-retryable status, thrown on the first attempt: every 4xx except
+    // 429. `err.status` says which.
   } else if (err instanceof ConnectionError) {
-    // Exhausted retries (network / 5xx). Inspect `.cause`.
+    // Exhausted retries against a retryable failure — network, 5xx, 408 or a
+    // 429 that kept coming back. Inspect `.cause`, which is the last
+    // `HttpError` when the failure was an HTTP one.
   } else if (err instanceof MissingFieldError) {
     // Server returned an unexpected shape — likely a schema mismatch.
   }
 }
 ```
+
+#### Retries and rate limiting
+
+Only **5xx, 408 and 429** are retried. Every other 4xx is a defect in the request, so it
+is thrown as an `HttpError` on the first attempt instead of burning the retry budget —
+a misconfigured URL now reports a 404 immediately rather than after three attempts.
+
+HTTP 429 is the one status where retrying the identical request is correct: every
+GraphQL-level error from this API arrives as HTTP 200 with a populated `errors` array,
+so 429 is the only non-200 it emits under normal operation. The client honours the
+server's own `retry-after` rather than its fixed `retryDelayMs`, waiting
+`max(retryAfterSeconds, retryDelayMs)`.
+
+`HttpError` carries the parsed body and the rate-limit headers:
+
+```ts
+if (err instanceof HttpError && err.isRateLimited) {
+  err.retryAfterSeconds; // 37
+  err.limit;             // 600
+  err.remaining;         // 0
+  err.errors;            // [{ message: '...', extensions: { code: 'RATE_LIMITED' } }]
+}
+```
+
+Absent or malformed headers leave those fields `undefined`, so a missing header stays
+distinguishable from a real `0`.
 
 #### Contract error codes
 
