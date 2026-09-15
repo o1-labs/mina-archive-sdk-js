@@ -25,6 +25,8 @@ export type { ClientConfig } from './client.js';
 
 export { Currency } from './currency.js';
 
+export { blockTimestampToDate, toBlockDateTimeFilter } from './time.js';
+
 export {
   ConnectionError,
   CurrencyUnderflowError,
