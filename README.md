@@ -151,6 +151,35 @@ try {
 }
 ```
 
+#### Contract error codes
+
+Branch on `extensions.code`, never on message text — the server blocks GraphQL field
+suggestions, so messages are deliberately minimal and carry no stability promise.
+
+| `ErrorCode` | Value | Meaning |
+| --- | --- | --- |
+| `ErrorCode.BlockRangeError` | `BLOCK_RANGE_ERROR` | Range exceeds `BLOCK_RANGE_SIZE`. Narrow it; never retry unchanged. |
+| `ErrorCode.ActionStateNotFound` | `ACTION_STATE_NOT_FOUND` | The action state is not in the archive. |
+| `ErrorCode.ActionStateOutOfRange` | `ACTION_STATE_OUT_OF_RANGE` | The action state is outside the requested range. |
+| `ErrorCode.RateLimited` | `RATE_LIMITED` | Too many requests. Back off. |
+
+```ts
+import { ErrorCode, GraphqlError } from '@o1-labs/mina-archive-sdk';
+
+try {
+  await client.getEvents({ address: 'B62q...' });
+} catch (err) {
+  if (err instanceof GraphqlError && err.hasCode(ErrorCode.BlockRangeError)) {
+    // Halve the range and try again.
+  }
+}
+```
+
+All of these arrive as **HTTP 200** with a populated `errors` array;
+`extensions.status` is a payload field, not the HTTP status. An `undefined` `code`
+means no code was sent — the server masks unexpected errors, and those carry no
+`extensions` at all — not that nothing went wrong.
+
 ## Examples
 
 ```sh

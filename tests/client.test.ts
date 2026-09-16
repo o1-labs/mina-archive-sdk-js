@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { ArchiveClient } from '../src/client.js';
 import {
   ConnectionError,
+  ErrorCode,
   GraphqlError,
   HttpError,
   MissingFieldError,
@@ -361,4 +362,64 @@ test('posts the configured URL verbatim and never appends a path', async () => {
       `${configured} should reach path ${expectedPath}`,
     );
   }
+});
+
+// The API publishes extensions.code as its discriminator (#11). The data
+// already survived at runtime — this was a type-surface defect — so the test
+// that matters is that TypeScript can now reach it without a cast.
+test('GraphqlError exposes extensions, path and locations', async () => {
+  const client = new ArchiveClient('http://x/', {
+    retries: 1,
+    fetch: fakeFetch([
+      jsonResponse({
+        errors: [
+          {
+            message: 'm',
+            extensions: { code: 'BLOCK_RANGE_ERROR', status: 400 },
+            path: ['events'],
+            locations: [{ line: 2, column: 3 }],
+          },
+        ],
+        data: null,
+      }),
+    ]),
+  });
+
+  await assert.rejects(
+    () => client.getEvents({ address: 'B62q...' }),
+    (err: unknown) => {
+      assert.ok(err instanceof GraphqlError);
+      // No `as any` anywhere below — that is the point of the issue.
+      assert.equal(err.errors[0].extensions?.code, 'BLOCK_RANGE_ERROR');
+      assert.equal(err.errors[0].extensions?.status, 400);
+      assert.deepEqual(err.errors[0].path, ['events']);
+      assert.deepEqual(err.errors[0].locations, [{ line: 2, column: 3 }]);
+      assert.equal(err.code, ErrorCode.BlockRangeError);
+      assert.deepEqual(err.codes, ['BLOCK_RANGE_ERROR']);
+      assert.ok(err.hasCode(ErrorCode.BlockRangeError));
+      assert.ok(!err.hasCode(ErrorCode.RateLimited));
+      return true;
+    },
+  );
+});
+
+// The server masks unexpected errors, so those carry no extensions at all.
+test('a masked error has no code and does not throw on access', async () => {
+  const client = new ArchiveClient('http://x/', {
+    retries: 1,
+    fetch: fakeFetch([
+      jsonResponse({ errors: [{ message: 'Unexpected error.' }], data: null }),
+    ]),
+  });
+
+  await assert.rejects(
+    () => client.getEvents({ address: 'B62q...' }),
+    (err: unknown) => {
+      assert.ok(err instanceof GraphqlError);
+      assert.equal(err.code, undefined);
+      assert.deepEqual(err.codes, []);
+      assert.ok(!err.hasCode(ErrorCode.BlockRangeError));
+      return true;
+    },
+  );
 });
