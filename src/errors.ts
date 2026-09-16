@@ -94,8 +94,37 @@ export class HttpError extends Error {
     public queryName: string,
     public status: number,
     public statusText: string,
+    /**
+     * Error entries from the response body, when it was GraphQL-shaped. The
+     * rate limiter answers before GraphQL runs, so a 429 body carries
+     * `extensions.code === 'RATE_LIMITED'` here.
+     */
+    public errors: GraphqlErrorEntry[] = [],
+    /** From the `retry-after` header, in seconds. */
+    public retryAfterSeconds?: number,
+    /** From `x-ratelimit-limit`. */
+    public limit?: number,
+    /** From `x-ratelimit-remaining`. */
+    public remaining?: number,
+    /** The raw body, truncated, for statuses that are not GraphQL-shaped. */
+    public body?: string,
   ) {
     super(`HTTP ${status} ${statusText} in ${queryName}`);
+  }
+
+  /**
+   * Whether this status is worth retrying: 5xx, 408 and 429 yes, every other
+   * 4xx no. A 4xx other than 429 is a defect in the request, so retrying it
+   * only wastes the budget before reporting a fault that was obvious on the
+   * first attempt.
+   */
+  get isRetryable(): boolean {
+    return this.status >= 500 || this.status === 408 || this.status === 429;
+  }
+
+  /** Whether the server rate-limited this request. */
+  get isRateLimited(): boolean {
+    return this.status === 429;
   }
 }
 
