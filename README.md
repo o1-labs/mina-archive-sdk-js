@@ -211,6 +211,31 @@ All of these arrive as **HTTP 200** with a populated `errors` array;
 means no code was sent — the server masks unexpected errors, and those carry no
 `extensions` at all — not that nothing went wrong.
 
+#### Partial results
+
+A response can legally carry **both** `data` and `errors`. The root lists and most of
+their fields are nullable, so a field-level resolver error nullifies a sub-tree rather
+than the whole response, and the rows that succeeded still arrive.
+
+`getEvents` and friends still throw in that case — a partial result is not a success —
+but the payload is attached to `GraphqlError.data` instead of being discarded. When the
+server returns nine good event groups and one field-level error, this is the difference
+between recovering the nine and losing them:
+
+```ts
+try {
+  await client.getEvents({ address: 'B62q...' });
+} catch (err) {
+  if (err instanceof GraphqlError && err.hasPartialData) {
+    const { events } = err.data as { events: EventOutput[] };
+    // events holds the rows the server did return.
+  }
+}
+```
+
+`data` is `undefined` or `null` when the server sent none, which is a total failure
+rather than a partial one — `hasPartialData` tells the two apart.
+
 ## Examples
 
 ```sh

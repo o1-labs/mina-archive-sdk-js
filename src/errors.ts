@@ -42,9 +42,20 @@ export interface GraphqlErrorEntry {
 
 export class GraphqlError extends Error {
   override name = 'GraphqlError';
+  /**
+   * The response's `data` field, when the server sent one alongside the
+   * errors.
+   *
+   * HTTP 200 carrying both is a normal GraphQL outcome: the root lists and
+   * most of their fields are nullable, so a field-level resolver error
+   * nullifies a sub-tree rather than the whole response, and the rows that
+   * succeeded still arrive. `undefined` or `null` means the server sent no
+   * usable data, which is a total failure rather than a partial one.
+   */
   constructor(
     public queryName: string,
     public errors: GraphqlErrorEntry[],
+    public data?: unknown,
   ) {
     super(
       `GraphQL error in ${queryName}: ${errors.map((e) => e.message).join('; ')}`,
@@ -72,6 +83,11 @@ export class GraphqlError extends Error {
   /** Whether any entry carries the given `extensions.code`. */
   hasCode(code: string): boolean {
     return this.codes.includes(code);
+  }
+
+  /** Whether the server returned usable data alongside the errors. */
+  get hasPartialData(): boolean {
+    return this.data !== undefined && this.data !== null;
   }
 }
 

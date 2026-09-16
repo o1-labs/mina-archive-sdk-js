@@ -147,7 +147,10 @@ export class ArchiveClient {
         };
 
         if (body.errors && body.errors.length > 0) {
-          throw new GraphqlError(queryName, body.errors);
+          // Keep any data that arrived with the errors. A partial payload is
+          // a normal GraphQL outcome and used to be discarded here, before
+          // body.data was ever looked at.
+          throw new GraphqlError(queryName, body.errors, body.data);
         }
 
         // GraphQL spec: response always has `data` on success, possibly null.
