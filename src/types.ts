@@ -1,8 +1,19 @@
 /**
  * TypeScript types for the Mina Archive Node GraphQL schema.
  *
- * Mirrors `schema.graphql` in this repo. When the upstream schema changes,
- * the schema-drift CI workflow flags it; update these types in lockstep.
+ * Mirrors `schema.graphql` in this repo — and that is enforced, not asserted.
+ * `src/generated/schema-types.ts` is generated from the vendored SDL by
+ * `npm run codegen` (CI fails on a diff), and
+ * `src/generated/conformance.ts` asserts every type below is *exactly* equal
+ * to its generated counterpart. A type that drifts from the schema does not
+ * compile.
+ *
+ * These stay hand-written because they carry what a generator cannot produce:
+ * the `timestamp` encoding warning, the `ENABLE_BLOCK_TRANSACTION_DETAILS`
+ * notes, the element-nullability explanations.
+ *
+ * When the upstream schema changes: update `schema.graphql`, run
+ * `npm run codegen`, then follow the conformance errors.
  */
 
 /** Filter for the consensus status of a block. */
@@ -13,22 +24,22 @@ export type BlockSortByInput = 'BLOCKHEIGHT_ASC' | 'BLOCKHEIGHT_DESC';
 
 export interface EventFilterOptionsInput {
   address: string;
-  tokenId?: string;
-  status?: BlockStatusFilter;
+  tokenId?: string | null;
+  status?: BlockStatusFilter | null;
   /** Mina block height to filter events to, exclusive. */
-  to?: number;
+  to?: number | null;
   /** Mina block height to filter events from, inclusive. */
-  from?: number;
+  from?: number | null;
 }
 
 export interface ActionFilterOptionsInput {
   address: string;
-  tokenId?: string;
-  status?: BlockStatusFilter;
-  to?: number;
-  from?: number;
-  fromActionState?: string;
-  endActionState?: string;
+  tokenId?: string | null;
+  status?: BlockStatusFilter | null;
+  to?: number | null;
+  from?: number | null;
+  fromActionState?: string | null;
+  endActionState?: string | null;
 }
 
 /**
@@ -45,18 +56,18 @@ export interface VerificationKeyUpdateFilterInput {
   from: number;
   /** Mina block height to search to, exclusive. */
   to: number;
-  status?: BlockStatusFilter;
+  status?: BlockStatusFilter | null;
 }
 
 export interface BlockQueryInput {
-  blockHeight_gte?: number;
-  blockHeight_lt?: number;
+  blockHeight_gte?: number | null;
+  blockHeight_lt?: number | null;
   /** ISO-8601 timestamp. */
-  dateTime_gte?: string;
+  dateTime_gte?: string | null;
   /** ISO-8601 timestamp. */
-  dateTime_lt?: string;
-  canonical?: boolean;
-  inBestChain?: boolean;
+  dateTime_lt?: string | null;
+  canonical?: boolean | null;
+  inBestChain?: boolean | null;
 }
 
 export interface TransactionInfo {
