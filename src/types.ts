@@ -65,19 +65,31 @@ export interface TransactionInfo {
   memo: string;
   authorizationKind: string;
   sequenceNumber: number;
-  zkappAccountUpdateIds: number[];
+  /**
+   * Element-nullable in the SDL (`[Int]!`), so a member may be `null` even
+   * though the list itself is always present.
+   */
+  zkappAccountUpdateIds: (number | null)[];
 }
 
 export interface EventData {
   accountUpdateId: string;
   transactionInfo: TransactionInfo | null;
-  data: string[];
+  /**
+   * Element-nullable in the SDL (`[String]!`), so a member may be `null` even
+   * though the list itself is always present.
+   */
+  data: (string | null)[];
 }
 
 export interface ActionData {
   accountUpdateId: string;
   transactionInfo: TransactionInfo | null;
-  data: string[];
+  /**
+   * Element-nullable in the SDL (`[String]!`), so a member may be `null` even
+   * though the list itself is always present.
+   */
+  data: (string | null)[];
 }
 
 export interface BlockInfo {

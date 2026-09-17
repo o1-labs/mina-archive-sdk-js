@@ -40,6 +40,7 @@ const events = await client.getEvents({
 });
 
 for (const group of events) {
+  if (!group) continue; // elements are nullable — see "Nullable elements" below
   console.log(`block ${group.blockInfo?.height}: ${group.eventData?.length ?? 0} events`);
 }
 ```
@@ -54,13 +55,31 @@ Each method on `ArchiveClient` maps 1:1 to a GraphQL query in the [Archive-Node-
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `getEvents(input)` | `EventOutput[]` | Events emitted by a zkApp account, optionally filtered by block range and consensus status. |
-| `getActions(input)` | `ActionOutput[]` | Actions dispatched from a zkApp account. |
+| `getEvents(input)` | `(EventOutput \| null)[]` | Events emitted by a zkApp account, optionally filtered by block range and consensus status. |
+| `getActions(input)` | `(ActionOutput \| null)[]` | Actions dispatched from a zkApp account. |
 | `getNetworkState()` | `NetworkStateOutput` | Archive's max canonical and pending block heights. |
-| `getBlocks({ query?, limit?, sortBy? })` | `Block[]` | Blocks filtered by height/date range and chain status. Transaction detail needs `ENABLE_BLOCK_TRANSACTION_DETAILS` on the server — see below. |
+| `getBlocks({ query?, limit?, sortBy? })` | `(Block \| null)[]` | Blocks filtered by height/date range and chain status. Transaction detail needs `ENABLE_BLOCK_TRANSACTION_DETAILS` on the server — see below. |
 | `getVerificationKeyUpdates(input)` | `VerificationKeyUpdate[]` | Applied account updates that set a given verification key, within a required block range. |
 | `query(gql)` | builder | Run arbitrary GraphQL through the same retry path. |
 | `executeQuery(gql, vars, name)` | `unknown` | Low-level escape hatch returning the raw `data` field. |
+
+### Nullable elements
+
+`getEvents`, `getActions` and `getBlocks` return `[T]!` in the SDL: the list
+itself is always present, but **every element is nullable**, and the server is
+free to return `null` there indefinitely — under the upstream versioning policy
+`T` → `T!` is the only safe direction, so a null element never becomes a
+breaking change. The same holds for `EventData.data`, `ActionData.data` and
+`TransactionInfo.zkappAccountUpdateIds`, which are `[String]!` and `[Int]!`
+with nullable members.
+
+The SDK reflects this: those positions are typed `(T | null)[]`, so strict
+TypeScript makes you guard each element rather than telling you the guard is
+unnecessary.
+
+`getVerificationKeyUpdates` is the exception — its SDL type is
+`[VerificationKeyUpdate!]!`, elements included, so it returns
+`VerificationKeyUpdate[]` with no nulls.
 
 ### Block transaction detail
 
@@ -253,15 +272,65 @@ See `examples/`:
 
 ## Version compatibility
 
-This SDK versions in lockstep with the [Archive-Node-API](https://github.com/o1-labs/Archive-Node-API) schema it speaks.
+The SDK exports the schema version it speaks:
+
+```ts
+import { SCHEMA_VERSION } from '@o1-labs/mina-archive-sdk';
+// '1.0' — the Archive-Node-API schema major.minor
+```
+
+**`SCHEMA_VERSION`, not the package version, is the compatibility check.** The
+package version is plain semver about the SDK's own surface:
 
 | Part | Meaning |
 | --- | --- |
-| **Major** | The schema major version. A breaking schema change moves both. |
-| **Minor** | The schema minor version. A new query or argument moves both. |
-| **Patch** | SDK-only changes — fixes, docs, dependencies. Independent of the server. |
+| **Major** | A breaking change to the SDK's API — whether the schema forced it or not. |
+| **Minor** | Additive: a new query, a new option, a new helper. |
+| **Patch** | Fixes, docs, dependencies. |
 
-So an SDK on `1.0.x` speaks the `1.0.x` schema, and matching the first two numbers is the whole compatibility check. The schema is additive within a major version, so an older SDK keeps working against a newer server; it simply cannot reach what was added after it.
+The two still move together in the common cases: a breaking schema change
+breaks the SDK surface, so it takes a major, and a schema minor that adds a
+query is an SDK minor. What separates them is an **SDK-only** breaking change,
+which now has a home. 2.0.0 is exactly that — it widened six positions to
+admit the `null`s the 1.0 schema always permitted, and speaks the same `1.0`
+schema 1.0.x did.
+
+The schema is additive within a major version, so an SDK whose `SCHEMA_VERSION`
+major matches the server keeps working against a newer server; it simply cannot
+reach what was added after it.
+
+Earlier releases followed a stricter rule in which the package's major.minor
+*was* the schema version. That rule left no position for a breaking SDK-only
+fix, which is why it was amended in 2.0.0.
+
+### Migrating from 1.x to 2.0
+
+One change, and the compiler finds every site for you. `getEvents`,
+`getActions` and `getBlocks` now return `(T | null)[]`, and `EventData.data`,
+`ActionData.data` and `TransactionInfo.zkappAccountUpdateIds` now have nullable
+members. Nothing about the runtime changed — 1.x already passed these `null`s
+through; it just told you they could not happen.
+
+```ts
+// 1.x — compiled green, threw in production on a null element
+for (const group of events) {
+  console.log(group.blockInfo?.height);
+}
+
+// 2.0 — the guard is now required
+for (const group of events) {
+  if (!group) continue;
+  console.log(group.blockInfo?.height);
+}
+```
+
+To drop nulls instead of handling them:
+
+```ts
+const present = events.filter((e): e is NonNullable<typeof e> => e !== null);
+```
+
+`getNetworkState` and `getVerificationKeyUpdates` are unchanged.
 
 ## Development
 
