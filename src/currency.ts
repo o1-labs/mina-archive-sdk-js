@@ -15,6 +15,11 @@ export class Currency {
   }
 
   static fromNanomina(nanomina: bigint | number): Currency {
+    // BigInt() throws a raw RangeError on a non-integer number, which would
+    // escape an API that documents typed errors.
+    if (typeof nanomina === 'number' && !Number.isInteger(nanomina)) {
+      throw new InvalidCurrencyError(`not an integer: ${nanomina}`);
+    }
     const n = typeof nanomina === 'number' ? BigInt(nanomina) : nanomina;
     if (n < 0n) {
       throw new InvalidCurrencyError(n.toString());
@@ -75,6 +80,10 @@ export class Currency {
   }
 
   mul(scalar: bigint | number): Currency {
+    // As in fromNanomina: a fractional scalar must not leak a RangeError.
+    if (typeof scalar === 'number' && !Number.isInteger(scalar)) {
+      throw new InvalidCurrencyError(`not an integer scalar: ${scalar}`);
+    }
     const s = typeof scalar === 'number' ? BigInt(scalar) : scalar;
     if (s < 0n) {
       throw new InvalidCurrencyError(`negative scalar: ${s}`);
@@ -101,6 +110,12 @@ function parseDecimal(s: string): bigint {
   const dot = trimmed.indexOf('.');
   const wholeStr = dot === -1 ? trimmed : trimmed.slice(0, dot);
   const fracStr = dot === -1 ? '' : trimmed.slice(dot + 1);
+
+  // A bare "." has both halves empty, and each half is separately allowed to
+  // be empty ("5." and ".5" are fine), so without this it parsed as zero.
+  if (wholeStr === '' && fracStr === '') {
+    throw new InvalidCurrencyError(s);
+  }
 
   if (fracStr.length > 9) {
     throw new InvalidCurrencyError(`too many decimal places (max 9): ${s}`);

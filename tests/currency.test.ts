@@ -103,3 +103,22 @@ test('large value preserves precision via bigint', () => {
   const c = Currency.fromMina('1000000000');
   assert.equal(c.nanomina(), 1_000_000_000_000_000_000n);
 });
+
+test('a bare "." is not zero', () => {
+  // Both halves of the decimal point are empty, and each half is separately
+  // allowed to be empty, so this used to parse as 0.
+  assert.throws(() => Currency.fromMina('.'), InvalidCurrencyError);
+  // Still legal — only one half may be empty.
+  assert.equal(Currency.fromMina('5.').mina(), '5.000000000');
+  assert.equal(Currency.fromMina('.5').mina(), '0.500000000');
+});
+
+test('a fractional number throws a typed error, not a raw RangeError', () => {
+  // BigInt(1.5) throws RangeError, which would escape an API that documents
+  // typed errors.
+  assert.throws(() => Currency.fromNanomina(1.5), InvalidCurrencyError);
+  assert.throws(() => Currency.fromMina('1').mul(1.5), InvalidCurrencyError);
+  // Integral numbers still work.
+  assert.equal(Currency.fromNanomina(1500000000).mina(), '1.500000000');
+  assert.equal(Currency.fromMina('1').mul(3).mina(), '3.000000000');
+});
