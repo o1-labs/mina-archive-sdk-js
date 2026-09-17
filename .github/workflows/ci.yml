@@ -8,11 +8,17 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # package.json's `engines` promises node >= 20.18.0, so verify the
+        # floor and the current LTS releases rather than the floor alone.
+        node-version: ['20.18.0', '22.x', '24.x']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.18.0'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: npm ci
       - run: npm run lint --if-present
