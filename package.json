@@ -50,13 +50,18 @@
     "lint": "eslint . --ext .ts",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts' 'examples/**/*.ts'",
     "check-schema-drift": "bash scripts/check_schema_drift.sh",
+    "codegen": "graphql-codegen --config codegen.ts",
+    "codegen:check": "npm run codegen && git diff --exit-code -- src/generated",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^7.4.1",
+    "@graphql-codegen/typescript": "^6.1.0",
     "@types/node": "^20.5.7",
     "@typescript-eslint/eslint-plugin": "^6.5.0",
     "@typescript-eslint/parser": "^6.5.0",
     "eslint": "^8.48.0",
+    "graphql": "^16.14.2",
     "prettier": "3.0.3",
     "rimraf": "^5.0.5",
     "typescript": "^5.2.2"

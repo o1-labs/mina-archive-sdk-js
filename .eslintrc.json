@@ -7,7 +7,7 @@
   },
   "plugins": ["@typescript-eslint"],
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
-  "ignorePatterns": ["build/", "node_modules/", "*.cjs"],
+  "ignorePatterns": ["build/", "node_modules/", "*.cjs", "src/generated/schema-types.ts"],
   "rules": {
     "@typescript-eslint/no-unused-vars": [
       "error",
