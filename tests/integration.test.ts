@@ -12,7 +12,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ArchiveClient } from '../src/index.js';
-import { GraphqlError } from '../src/errors.js';
 
 const URI = process.env.ARCHIVE_GRAPHQL_URI;
 
@@ -31,27 +30,29 @@ if (!URI) {
   const client = new ArchiveClient(URI, { retries: 2, retryDelayMs: 1000 });
 
   test('networkState returns max block heights', async () => {
-    // NOTE: against the static archive_db.sql fixture, the upstream
-    // network-service resolver crashes if either canonical or pending rows
-    // are missing (see Archive-Node-API's `src/services/network-service/
-    // network-service.ts`). Tolerate that GraphQL error; once the upstream
-    // bug is patched, drop the try/catch and keep the strict asserts.
-    let state;
-    try {
-      state = await client.getNetworkState();
-    } catch (err) {
-      if (err instanceof GraphqlError) {
-        console.log(
-          `networkState returned a GraphQL error (known upstream issue against fixture): ${err.message}`,
-        );
-        return;
-      }
-      throw err;
+    // The upstream resolver used to crash when either the canonical or the
+    // pending row was missing, and this test tolerated the resulting GraphQL
+    // error. It now returns `{ maxBlockHeight: null }` for an empty archive
+    // (network-service.ts), so the workaround is gone: a GraphQL error here
+    // is a real failure. `null` remains a legal answer — the SDL types
+    // maxBlockHeight nullable — so assert null-or-sane, not merely present.
+    const state = await client.getNetworkState();
+
+    if (state.maxBlockHeight === null) {
+      return; // legal: the archive has indexed nothing
     }
-    assert.ok(state.maxBlockHeight, 'maxBlockHeight present');
     assert.ok(
-      state.maxBlockHeight!.canonicalMaxBlockHeight >= 0,
+      state.maxBlockHeight.canonicalMaxBlockHeight >= 0,
       'canonicalMaxBlockHeight non-negative',
+    );
+    assert.ok(
+      state.maxBlockHeight.pendingMaxBlockHeight >= 0,
+      'pendingMaxBlockHeight non-negative',
+    );
+    assert.ok(
+      state.maxBlockHeight.pendingMaxBlockHeight >=
+        state.maxBlockHeight.canonicalMaxBlockHeight,
+      'canonical <= pending by definition',
     );
   });
 

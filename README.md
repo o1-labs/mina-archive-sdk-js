@@ -100,6 +100,13 @@ const client = new ArchiveClient('https://archive.example/', {
 });
 ```
 
+**This SDK targets Node, not the browser.** (`engines` requires Node ≥ 20.18.0.)
+Browser use needs the server to set `CORS_ORIGIN` — Archive-Node-API disables
+CORS by default — and even then the `headers` option above will break the
+preflight: the API allows only `content-type` as a request header and only
+`GET`/`POST`, so **any** custom header (auth, tracing, api-key) is rejected. The
+SDK does send them. Put the credential-bearing call behind your own server.
+
 ### Dates and times
 
 The schema carries **two different time encodings**, a few fields apart, and both
