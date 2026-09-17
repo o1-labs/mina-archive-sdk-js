@@ -348,7 +348,32 @@ ARCHIVE_GRAPHQL_URI=http://localhost:8080/ npm run test:integration
 
 ## Schema sync
 
-`schema.graphql` is vendored from `o1-labs/Archive-Node-API@main`. The `Schema Drift` CI workflow compares them weekly and on PR; on drift, update both `schema.graphql` and `src/types.ts` in the same PR.
+`schema.graphql` is vendored from `o1-labs/Archive-Node-API@main`. Two separate
+guards keep this SDK honest about it, because they catch different failures:
+
+**1. The vendored SDL matches upstream.** The `Schema Drift` workflow diffs the
+two files weekly and on **every** PR. On drift, update `schema.graphql` and the
+types in the same PR.
+
+**2. The types match the vendored SDL.** `src/generated/schema-types.ts` is
+generated from `schema.graphql` by `npm run codegen`; CI runs
+`npm run codegen:check` on every PR and fails on any diff. Then
+`src/generated/conformance.ts` asserts that every hand-written type in
+`src/types.ts`, and every client method's return type, is *exactly* equal to
+its generated counterpart. A type that drifts from the schema does not compile.
+
+The second guard exists because the first one cannot see type drift at all. The
+two schema files were byte-identical while six positions in `src/types.ts` had
+drifted from that very file — the check was green precisely when the thing it
+was advertised to protect was broken.
+
+Updating the schema:
+
+```sh
+# 1. refresh schema.graphql from upstream
+npm run codegen        # 2. regenerate src/generated/schema-types.ts
+npm run build          # 3. follow the conformance errors into src/types.ts
+```
 
 ## License
 
