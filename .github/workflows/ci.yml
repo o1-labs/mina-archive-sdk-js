@@ -16,5 +16,13 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run lint --if-present
+      # Regenerate src/generated/schema-types.ts from the vendored SDL and fail
+      # on any diff. This runs on EVERY pull request, not only when
+      # schema.graphql changes, because the drift being guarded against is a
+      # hand-written type moving away from an unchanged schema.
+      - name: Types match the vendored schema
+        run: npm run codegen:check
+      # `npm run build` type-checks src/generated/conformance.ts, which asserts
+      # every hand-written type is exactly equal to its generated counterpart.
       - run: npm run build
       - run: npm run test:unit
