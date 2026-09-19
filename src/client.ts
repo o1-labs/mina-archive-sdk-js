@@ -202,9 +202,18 @@ export class ArchiveClient {
 
   // -- Typed queries --
 
-  /** Query archived events for an address (zkApp account). */
-  async getEvents(input: EventFilterOptionsInput): Promise<EventOutput[]> {
-    const data = await this.executeQuery<{ events?: EventOutput[] | null }>(
+  /**
+   * Query archived events for an address (zkApp account).
+   *
+   * The SDL types this as `[EventOutput]!`: the list is always present but its
+   * elements are nullable, so null-guard each element before use.
+   */
+  async getEvents(
+    input: EventFilterOptionsInput,
+  ): Promise<(EventOutput | null)[]> {
+    const data = await this.executeQuery<{
+      events?: (EventOutput | null)[] | null;
+    }>(
       EVENTS_QUERY,
       { input },
       'getEvents',
@@ -215,9 +224,18 @@ export class ArchiveClient {
     return data.events;
   }
 
-  /** Query archived actions for an address (zkApp account). */
-  async getActions(input: ActionFilterOptionsInput): Promise<ActionOutput[]> {
-    const data = await this.executeQuery<{ actions?: ActionOutput[] | null }>(
+  /**
+   * Query archived actions for an address (zkApp account).
+   *
+   * The SDL types this as `[ActionOutput]!`: the list is always present but its
+   * elements are nullable, so null-guard each element before use.
+   */
+  async getActions(
+    input: ActionFilterOptionsInput,
+  ): Promise<(ActionOutput | null)[]> {
+    const data = await this.executeQuery<{
+      actions?: (ActionOutput | null)[] | null;
+    }>(
       ACTIONS_QUERY,
       { input },
       'getActions',
@@ -239,13 +257,18 @@ export class ArchiveClient {
     return data.networkState;
   }
 
-  /** Query blocks by height range, date range, or canonical/best-chain status. */
+  /**
+   * Query blocks by height range, date range, or canonical/best-chain status.
+   *
+   * The SDL types this as `[Block]!`: the list is always present but its
+   * elements are nullable, so null-guard each element before use.
+   */
   async getBlocks(opts: {
     query?: BlockQueryInput;
     limit?: number;
     sortBy?: BlockSortByInput;
-  } = {}): Promise<Block[]> {
-    const data = await this.executeQuery<{ blocks?: Block[] | null }>(
+  } = {}): Promise<(Block | null)[]> {
+    const data = await this.executeQuery<{ blocks?: (Block | null)[] | null }>(
       BLOCKS_QUERY,
       {
         query: opts.query ?? null,

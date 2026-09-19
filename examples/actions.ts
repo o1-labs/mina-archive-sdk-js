@@ -14,7 +14,13 @@ const actions = await client.getActions({
 });
 
 console.log(`got ${actions.length} action group(s)`);
+// `actions` is `[ActionOutput]!` in the SDL: the list is always present, but any
+// element may be null, so guard each one.
 for (const group of actions.slice(0, 5)) {
+  if (!group) {
+    console.log('  (null action group)');
+    continue;
+  }
   const height = group.blockInfo?.height ?? '?';
   const count = group.actionData?.length ?? 0;
   console.log(`  block ${height}: ${count} action(s)`);

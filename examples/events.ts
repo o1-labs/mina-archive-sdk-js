@@ -20,7 +20,13 @@ const events = await client.getEvents({
 });
 
 console.log(`got ${events.length} event group(s)`);
+// `events` is `[EventOutput]!` in the SDL: the list is always present, but any
+// element may be null, so guard each one.
 for (const group of events.slice(0, 5)) {
+  if (!group) {
+    console.log('  (null event group)');
+    continue;
+  }
   const height = group.blockInfo?.height ?? '?';
   const count = group.eventData?.length ?? 0;
   console.log(`  block ${height}: ${count} event(s)`);

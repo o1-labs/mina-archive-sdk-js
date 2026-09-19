@@ -23,6 +23,8 @@
 export { ArchiveClient } from './client.js';
 export type { ClientConfig } from './client.js';
 
+export { SCHEMA_VERSION } from './version.js';
+
 export { Currency } from './currency.js';
 
 export { blockTimestampToDate, toBlockDateTimeFilter } from './time.js';

@@ -78,11 +78,13 @@ if (!URI) {
       sortBy: 'BLOCKHEIGHT_DESC',
     });
     assert.ok(Array.isArray(blocks));
-    if (blocks.length > 1) {
-      assert.ok(
-        blocks[0].blockHeight >= blocks[1].blockHeight,
-        'sortBy DESC honored',
-      );
+    // `[Block]!` has nullable elements, so the ordering check needs two
+    // non-null neighbours rather than two positions.
+    const heights = blocks
+      .filter((b): b is NonNullable<typeof b> => b !== null)
+      .map((b) => b.blockHeight);
+    if (heights.length > 1) {
+      assert.ok(heights[0] >= heights[1], 'sortBy DESC honored');
     }
   });
 

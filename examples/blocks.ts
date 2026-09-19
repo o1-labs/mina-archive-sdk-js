@@ -16,7 +16,13 @@ const blocks = await client.getBlocks({
 });
 
 console.log(`got ${blocks.length} block(s)`);
+// `blocks` is `[Block]!` in the SDL: the list is always present, but any
+// element may be null, so guard each one.
 for (const block of blocks) {
+  if (!block) {
+    console.log('  (null block)');
+    continue;
+  }
   const coinbase = Currency.fromGraphql(block.transactions.coinbase);
   console.log(
     `  block ${block.blockHeight} by ${block.creator.slice(0, 12)}…  coinbase=${coinbase} MINA  (${block.transactions.userCommands.length} user commands)`,
