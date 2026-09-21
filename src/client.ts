@@ -42,6 +42,23 @@ export interface ClientConfig {
   retryDelayMs: number;
   /** Per-request timeout in milliseconds. */
   timeoutMs: number;
+  /**
+   * Ceiling on a server-supplied `retry-after` wait, in milliseconds.
+   *
+   * `timeoutMs` bounds one HTTP request; it does **not** cover the sleep
+   * between attempts, so without a ceiling a `retry-after: 86400` parks the
+   * call for a day. Above this the call rejects at once with the
+   * {@link HttpError}, which carries `retryAfterSeconds`, so the caller
+   * decides whether to wait, queue or fail. Default 60_000.
+   */
+  maxRetryAfterMs: number;
+  /**
+   * Cancels in-flight requests *and* the sleep between attempts.
+   *
+   * The per-request timeout only ever aborted the `fetch`; a call already
+   * sleeping on `retry-after` ignored an abort until the wait elapsed.
+   */
+  signal?: AbortSignal;
   /** Optional headers to attach to every request (e.g. auth). */
   headers?: Record<string, string>;
   /** Optional fetch override — defaults to the global fetch. Useful for tests. */
@@ -52,6 +69,7 @@ const DEFAULT_CONFIG: Omit<ClientConfig, 'graphqlUri'> = {
   retries: 3,
   retryDelayMs: 5_000,
   timeoutMs: 30_000,
+  maxRetryAfterMs: 60_000,
 };
 
 export interface QueryBuilderOptions {
@@ -101,6 +119,9 @@ export class ArchiveClient {
     }
 
     let lastError: unknown = undefined;
+    // Set when a retryable status must nonetheless end the call — throwing it
+    // from inside the try would be caught by this loop's own catch and retried.
+    let fatalError: unknown = undefined;
 
     for (let attempt = 1; attempt <= this.#config.retries; attempt++) {
       const controller = new AbortController();
@@ -117,7 +138,9 @@ export class ArchiveClient {
             ...this.#config.headers,
           },
           body: JSON.stringify(payload),
-          signal: controller.signal,
+          signal: this.#config.signal
+            ? AbortSignal.any([controller.signal, this.#config.signal])
+            : controller.signal,
         });
         clearTimeout(timer);
 
@@ -134,9 +157,15 @@ export class ArchiveClient {
           lastError = httpError;
           if (attempt < this.#config.retries) {
             // On a 429 the server has told us how long to wait. Honour it
-            // rather than hammering it again on our own fixed schedule.
+            // rather than hammering it again on our own fixed schedule — but
+            // only up to the ceiling, since no timeout covers this sleep.
             const retryAfterMs = (httpError.retryAfterSeconds ?? 0) * 1000;
-            await sleep(Math.max(retryAfterMs, this.#config.retryDelayMs));
+            const waitMs = Math.max(retryAfterMs, this.#config.retryDelayMs);
+            if (waitMs > this.#config.maxRetryAfterMs) {
+              fatalError = httpError;
+              break;
+            }
+            await sleep(waitMs, this.#config.signal);
           }
           continue;
         }
@@ -157,6 +186,11 @@ export class ArchiveClient {
         return (body.data ?? ({} as T)) as T;
       } catch (err) {
         clearTimeout(timer);
+        if (this.#config.signal?.aborted) {
+          // The caller cancelled. Retrying would ignore that, and wrapping it
+          // in a ConnectionError would hide why the call ended.
+          throw err;
+        }
         if (err instanceof GraphqlError) {
           // Don't retry on GraphQL-level errors — they're deterministic.
           throw err;
@@ -168,11 +202,16 @@ export class ArchiveClient {
         }
         lastError = err;
         if (attempt < this.#config.retries) {
-          await sleep(this.#config.retryDelayMs);
+          await sleep(this.#config.retryDelayMs, this.#config.signal);
         }
       }
     }
 
+    if (fatalError !== undefined) {
+      // Reported as itself, not wrapped: the caller needs `retryAfterSeconds`
+      // to decide whether to wait, queue or fail.
+      throw fatalError;
+    }
     throw new ConnectionError(queryName, this.#config.retries, lastError);
   }
 
@@ -305,8 +344,27 @@ export class ArchiveClient {
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Wait `ms`, or reject as soon as `signal` aborts.
+ *
+ * A plain `setTimeout` promise is why cancelling a rate-limited call used to
+ * wait out the whole `retry-after` before noticing.
+ */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(signal.reason);
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }
 
 /**

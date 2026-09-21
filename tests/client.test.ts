@@ -570,6 +570,112 @@ test('429 is retried, honouring retry-after', async () => {
   assert.equal(calls, 2);
 });
 
+// timeoutMs bounds one HTTP request; it never covered the sleep between
+// attempts, so `retry-after: 3600` parked the call for an hour whatever the
+// timeout said. Above the ceiling the call rejects at once.
+test('retry-after beyond the ceiling rejects instead of sleeping', async () => {
+  let calls = 0;
+  const f: typeof fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ errors: [{ message: 'slow' }] }), {
+      status: 429,
+      statusText: 'Too Many Requests',
+      headers: { 'content-type': 'application/json', 'retry-after': '3600' },
+    });
+  };
+
+  const client = new ArchiveClient('http://x/', {
+    retries: 3,
+    retryDelayMs: 0,
+    maxRetryAfterMs: 60_000,
+    fetch: f,
+  });
+
+  const started = Date.now();
+  await assert.rejects(
+    () => client.getNetworkState(),
+    (err: unknown) => {
+      assert.ok(err instanceof HttpError, `expected HttpError, got ${err}`);
+      assert.equal(err.status, 429);
+      // The requested delay still reaches the caller, so they can decide.
+      assert.equal(err.retryAfterSeconds, 3600);
+      return true;
+    },
+  );
+  // The point of the fix: it returned rather than sleeping for an hour.
+  assert.ok(Date.now() - started < 5_000, 'the call slept on retry-after');
+  assert.equal(calls, 1, 'it should not have retried past the ceiling');
+});
+
+// Within the ceiling, retry-after is still honoured.
+test('retry-after within the ceiling is still honoured', async () => {
+  let calls = 0;
+  const f: typeof fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      return new Response(JSON.stringify({ errors: [{ message: 'slow' }] }), {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: { 'content-type': 'application/json', 'retry-after': '0' },
+      });
+    }
+    return new Response(
+      JSON.stringify({ data: { networkState: { maxBlockHeight: null } } }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+
+  const client = new ArchiveClient('http://x/', {
+    retries: 3,
+    retryDelayMs: 0,
+    maxRetryAfterMs: 60_000,
+    fetch: f,
+  });
+  await client.getNetworkState();
+  assert.equal(calls, 2);
+});
+
+// Aborting used to do nothing until the retry wait elapsed: the timeout
+// controller wrapped the fetch only, and the sleep was a bare setTimeout.
+test('aborting interrupts the retry wait instead of waiting it out', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const f: typeof fetch = async () => {
+    calls++;
+    // Abort while the client is about to sleep on this 429.
+    setTimeout(() => controller.abort(new Error('cancelled by caller')), 10);
+    return new Response(JSON.stringify({ errors: [{ message: 'slow' }] }), {
+      status: 429,
+      statusText: 'Too Many Requests',
+      headers: { 'content-type': 'application/json', 'retry-after': '30' },
+    });
+  };
+
+  const client = new ArchiveClient('http://x/', {
+    retries: 3,
+    retryDelayMs: 30_000,
+    maxRetryAfterMs: 60_000,
+    signal: controller.signal,
+    fetch: f,
+  });
+
+  const started = Date.now();
+  await assert.rejects(
+    () => client.getNetworkState(),
+    (err: unknown) => {
+      // The caller's reason reaches them, not a ConnectionError that hides it.
+      assert.ok(err instanceof Error);
+      assert.equal(err.message, 'cancelled by caller');
+      return true;
+    },
+  );
+  assert.ok(
+    Date.now() - started < 5_000,
+    'the abort did not interrupt the retry wait',
+  );
+  assert.equal(calls, 1);
+});
+
 // HTTP 200 with BOTH a partial data payload and an errors array is a normal
 // GraphQL outcome (#12). The client threw before ever looking at body.data,
 // so the rows the server did return were unreachable.

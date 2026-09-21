@@ -92,13 +92,29 @@ which is what makes the response look healthy rather than obviously truncated.
 ### Configuration
 
 ```ts
+const controller = new AbortController();
+
 const client = new ArchiveClient('https://archive.example/', {
-  retries: 5,            // default: 3
-  retryDelayMs: 10_000,  // default: 5_000
-  timeoutMs: 60_000,     // default: 30_000
+  retries: 5,              // default: 3
+  retryDelayMs: 10_000,    // default: 5_000
+  timeoutMs: 60_000,       // default: 30_000
+  maxRetryAfterMs: 60_000, // default: 60_000
+  signal: controller.signal,
   headers: { 'x-api-key': process.env.API_KEY },
 });
 ```
+
+**`timeoutMs` does not bound a `retry-after` wait.** It bounds one HTTP
+request. Honouring a 429's `retry-after` means sleeping between attempts, which
+no request timeout covers — `retry-after: 86400` would park the call for a day.
+`maxRetryAfterMs` (default 60s) is the ceiling: above it the call rejects at
+once with the `HttpError`, which carries `retryAfterSeconds` so you can decide
+whether to wait, queue or fail.
+
+**`signal` cancels the wait, not just the request.** Passing an `AbortSignal`
+aborts an in-flight `fetch` *and* interrupts the sleep between attempts, and
+the abort reason reaches the caller unwrapped. Without it, aborting a
+rate-limited call had no effect until the whole `retry-after` had elapsed.
 
 **This SDK targets Node, not the browser.** (`engines` requires Node ≥ 20.18.0.)
 Browser use needs the server to set `CORS_ORIGIN` — Archive-Node-API disables
