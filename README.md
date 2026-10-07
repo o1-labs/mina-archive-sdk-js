@@ -40,7 +40,6 @@ const events = await client.getEvents({
 });
 
 for (const group of events) {
-  if (!group) continue; // elements are nullable — see "Nullable elements" below
   console.log(`block ${group.blockInfo?.height}: ${group.eventData?.length ?? 0} events`);
 }
 ```
@@ -55,31 +54,26 @@ Each method on `ArchiveClient` maps 1:1 to a GraphQL query in the [Archive-Node-
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `getEvents(input)` | `(EventOutput \| null)[]` | Events emitted by a zkApp account, optionally filtered by block range and consensus status. |
-| `getActions(input)` | `(ActionOutput \| null)[]` | Actions dispatched from a zkApp account. |
+| `getEvents(input)` | `EventOutput[]` | Events emitted by a zkApp account, optionally filtered by block range and consensus status. |
+| `getActions(input)` | `ActionOutput[]` | Actions dispatched from a zkApp account. |
 | `getNetworkState()` | `NetworkStateOutput` | Archive's max canonical and pending block heights. |
-| `getBlocks({ query?, limit?, sortBy? })` | `(Block \| null)[]` | Blocks filtered by height/date range and chain status. Transaction detail needs `ENABLE_BLOCK_TRANSACTION_DETAILS` on the server — see below. |
+| `getBlocks({ query?, limit?, sortBy? })` | `Block[]` | Blocks filtered by height/date range and chain status. Transaction detail needs `ENABLE_BLOCK_TRANSACTION_DETAILS` on the server — see below. |
 | `getVerificationKeyUpdates(input)` | `VerificationKeyUpdate[]` | Applied account updates that set a given verification key, within a required block range. |
 | `query(gql)` | builder | Run arbitrary GraphQL through the same retry path. |
 | `executeQuery(gql, vars, name)` | `unknown` | Low-level escape hatch returning the raw `data` field. |
 
-### Nullable elements
+### List nullability
 
-`getEvents`, `getActions` and `getBlocks` return `[T]!` in the SDL: the list
-itself is always present, but **every element is nullable**, and the server is
-free to return `null` there indefinitely — under the upstream versioning policy
-`T` → `T!` is the only safe direction, so a null element never becomes a
-breaking change. The same holds for `EventData.data`, `ActionData.data` and
-`TransactionInfo.zkappAccountUpdateIds`, which are `[String]!` and `[Int]!`
-with nullable members.
+Every list the SDK returns has non-null elements. Schema 2.0 declares
+`events`, `actions` and `blocks` as `[T!]!`, `EventData.data` and
+`ActionData.data` as `[String!]!`, and
+`TransactionInfo.zkappAccountUpdateIds` as `[Int!]!`, so these positions are
+typed `T[]` and need no per-element guard.
 
-The SDK reflects this: those positions are typed `(T | null)[]`, so strict
-TypeScript makes you guard each element rather than telling you the guard is
-unnecessary.
-
-`getVerificationKeyUpdates` is the exception — its SDL type is
-`[VerificationKeyUpdate!]!`, elements included, so it returns
-`VerificationKeyUpdate[]` with no nulls.
+`EventOutput.eventData` and `ActionOutput.actionData` are the two exceptions
+at the outer level: the SDL types them `[EventData!]` and `[ActionData!]`, so
+the list itself can be `null` (typed `T[] | null`), but when present its
+elements are not.
 
 ### Block transaction detail
 
@@ -299,59 +293,33 @@ The SDK exports the schema version it speaks:
 
 ```ts
 import { SCHEMA_VERSION } from '@o1-labs/mina-archive-sdk';
-// '1.0' — the Archive-Node-API schema major.minor
+// '2.0' — the Archive-Node-API schema major.minor
 ```
 
-**`SCHEMA_VERSION`, not the package version, is the compatibility check.** The
-package version is plain semver about the SDK's own surface:
+The Archive-Node-API server, its schema and this SDK share one major version.
+**The SDK major equals the server major; same major = compatible.** A server
+with a higher minor than `SCHEMA_VERSION` only adds features, which this SDK may
+not wrap yet; everything the SDK does wrap keeps working. A different major is
+not compatible.
+
+Within that major, the package version is semver about the SDK's own surface:
 
 | Part | Meaning |
 | --- | --- |
-| **Major** | A breaking change to the SDK's API — whether the schema forced it or not. |
+| **Major** | Follows the server and schema major. |
 | **Minor** | Additive: a new query, a new option, a new helper. |
 | **Patch** | Fixes, docs, dependencies. |
 
-The two still move together in the common cases: a breaking schema change
-breaks the SDK surface, so it takes a major, and a schema minor that adds a
-query is an SDK minor. What separates them is an **SDK-only** breaking change,
-which now has a home. 2.0.0 is exactly that — it widened six positions to
-admit the `null`s the 1.0 schema always permitted, and speaks the same `1.0`
-schema 1.0.x did.
-
-The schema is additive within a major version, so an SDK whose `SCHEMA_VERSION`
-major matches the server keeps working against a newer server; it simply cannot
-reach what was added after it.
-
-Earlier releases followed a stricter rule in which the package's major.minor
-*was* the schema version. That rule left no position for a breaking SDK-only
-fix, which is why it was amended in 2.0.0.
-
 ### Migrating from 1.x to 2.0
 
-One change, and the compiler finds every site for you. `getEvents`,
-`getActions` and `getBlocks` now return `(T | null)[]`, and `EventData.data`,
-`ActionData.data` and `TransactionInfo.zkappAccountUpdateIds` now have nullable
-members. Nothing about the runtime changed — 1.x already passed these `null`s
-through; it just told you they could not happen.
+2.0 speaks schema 2.0 and needs an Archive-Node-API 2.x server.
 
-```ts
-// 1.x — compiled green, threw in production on a null element
-for (const group of events) {
-  console.log(group.blockInfo?.height);
-}
-
-// 2.0 — the guard is now required
-for (const group of events) {
-  if (!group) continue;
-  console.log(group.blockInfo?.height);
-}
-```
-
-To drop nulls instead of handling them:
-
-```ts
-const present = events.filter((e): e is NonNullable<typeof e> => e !== null);
-```
+The list types are the same as in 1.x: `getEvents`, `getActions` and
+`getBlocks` return `T[]`, and `EventData.data`, `ActionData.data` and
+`TransactionInfo.zkappAccountUpdateIds` have non-null members. The 1.0 schema
+declared these elements nullable while 1.x typed them non-null; schema 2.0 now
+guarantees non-null elements, so the 1.x types are correct and code written
+against them needs no null guards.
 
 `getNetworkState` and `getVerificationKeyUpdates` are unchanged.
 
@@ -385,10 +353,8 @@ generated from `schema.graphql` by `npm run codegen`; CI runs
 `src/types.ts`, and every client method's return type, is *exactly* equal to
 its generated counterpart. A type that drifts from the schema does not compile.
 
-The second guard exists because the first one cannot see type drift at all. The
-two schema files were byte-identical while six positions in `src/types.ts` had
-drifted from that very file — the check was green precisely when the thing it
-was advertised to protect was broken.
+The second guard exists because the first one cannot see type drift at all: the
+two schema files can be byte-identical while `src/types.ts` drifts from them.
 
 Updating the schema:
 

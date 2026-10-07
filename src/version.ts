@@ -1,12 +1,9 @@
 /**
- * The Archive-Node-API schema version this SDK speaks.
+ * The Archive-Node-API schema version this SDK speaks, as `MAJOR.MINOR`.
  *
- * This constant — not the package version — is the compatibility check. The
- * package version is plain semver about the SDK's own surface, so an SDK-only
- * breaking change can take a major without claiming the schema moved.
- *
- * The schema is additive within a major version, so an SDK whose
- * `SCHEMA_VERSION` major matches the server keeps working against a newer
- * server; it simply cannot reach what was added after it.
+ * The server, its schema and this SDK share one major version: the SDK major
+ * equals the server major, and the same major means compatible. A server with
+ * a higher minor only adds features, which this SDK may not wrap yet. Compare
+ * this constant with the server's `schemaVersion` to check compatibility.
  */
-export const SCHEMA_VERSION = '1.0';
+export const SCHEMA_VERSION = '2.0';

@@ -10,7 +10,7 @@
  *
  * These stay hand-written because they carry what a generator cannot produce:
  * the `timestamp` encoding warning, the `ENABLE_BLOCK_TRANSACTION_DETAILS`
- * notes, the element-nullability explanations.
+ * notes.
  *
  * When the upstream schema changes: update `schema.graphql`, run
  * `npm run codegen`, then follow the conformance errors.
@@ -76,31 +76,19 @@ export interface TransactionInfo {
   memo: string;
   authorizationKind: string;
   sequenceNumber: number;
-  /**
-   * Element-nullable in the SDL (`[Int]!`), so a member may be `null` even
-   * though the list itself is always present.
-   */
-  zkappAccountUpdateIds: (number | null)[];
+  zkappAccountUpdateIds: number[];
 }
 
 export interface EventData {
   accountUpdateId: string;
   transactionInfo: TransactionInfo | null;
-  /**
-   * Element-nullable in the SDL (`[String]!`), so a member may be `null` even
-   * though the list itself is always present.
-   */
-  data: (string | null)[];
+  data: string[];
 }
 
 export interface ActionData {
   accountUpdateId: string;
   transactionInfo: TransactionInfo | null;
-  /**
-   * Element-nullable in the SDL (`[String]!`), so a member may be `null` even
-   * though the list itself is always present.
-   */
-  data: (string | null)[];
+  data: string[];
 }
 
 export interface BlockInfo {
@@ -134,13 +122,13 @@ export interface ActionStates {
 
 export interface EventOutput {
   blockInfo: BlockInfo | null;
-  eventData: (EventData | null)[] | null;
+  eventData: EventData[] | null;
 }
 
 export interface ActionOutput {
   blockInfo: BlockInfo | null;
   transactionInfo: TransactionInfo | null;
-  actionData: (ActionData | null)[] | null;
+  actionData: ActionData[] | null;
   actionState: ActionStates;
 }
 
