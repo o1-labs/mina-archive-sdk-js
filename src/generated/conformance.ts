@@ -15,8 +15,8 @@
  *
  * `src/types.ts` stays hand-written rather than being replaced by the
  * generated file because it carries what a generator cannot produce — the
- * `timestamp` encoding warning, the `ENABLE_BLOCK_TRANSACTION_DETAILS` notes,
- * the element-nullability explanations. This file makes keeping both safe.
+ * `timestamp` encoding warning and the `ENABLE_BLOCK_TRANSACTION_DETAILS`
+ * notes. This file makes keeping both safe.
  *
  * Nothing here emits runtime code; the whole file erases at build time.
  */
@@ -84,8 +84,9 @@ export type _BlockStatusFilter = Expect<Equals<Hand.BlockStatusFilter, Gen.Block
 
 // -- Query root --
 //
-// The six nullability fixes live here as much as in the types above: revert
-// any of them and one of these stops compiling.
+// Element nullability of the list roots is checked here as much as in the
+// types above: a hand-written return type that differs from the SDL does not
+// compile.
 
 export type _getEvents = Expect<Equals<Returns<'getEvents'>, Gen.Query['events']>>;
 export type _getActions = Expect<Equals<Returns<'getActions'>, Gen.Query['actions']>>;

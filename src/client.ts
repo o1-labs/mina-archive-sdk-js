@@ -241,17 +241,12 @@ export class ArchiveClient {
 
   // -- Typed queries --
 
-  /**
-   * Query archived events for an address (zkApp account).
-   *
-   * The SDL types this as `[EventOutput]!`: the list is always present but its
-   * elements are nullable, so null-guard each element before use.
-   */
+  /** Query archived events for an address (zkApp account). */
   async getEvents(
     input: EventFilterOptionsInput,
-  ): Promise<(EventOutput | null)[]> {
+  ): Promise<EventOutput[]> {
     const data = await this.executeQuery<{
-      events?: (EventOutput | null)[] | null;
+      events?: EventOutput[] | null;
     }>(
       EVENTS_QUERY,
       { input },
@@ -263,17 +258,12 @@ export class ArchiveClient {
     return data.events;
   }
 
-  /**
-   * Query archived actions for an address (zkApp account).
-   *
-   * The SDL types this as `[ActionOutput]!`: the list is always present but its
-   * elements are nullable, so null-guard each element before use.
-   */
+  /** Query archived actions for an address (zkApp account). */
   async getActions(
     input: ActionFilterOptionsInput,
-  ): Promise<(ActionOutput | null)[]> {
+  ): Promise<ActionOutput[]> {
     const data = await this.executeQuery<{
-      actions?: (ActionOutput | null)[] | null;
+      actions?: ActionOutput[] | null;
     }>(
       ACTIONS_QUERY,
       { input },
@@ -296,18 +286,13 @@ export class ArchiveClient {
     return data.networkState;
   }
 
-  /**
-   * Query blocks by height range, date range, or canonical/best-chain status.
-   *
-   * The SDL types this as `[Block]!`: the list is always present but its
-   * elements are nullable, so null-guard each element before use.
-   */
+  /** Query blocks by height range, date range, or canonical/best-chain status. */
   async getBlocks(opts: {
     query?: BlockQueryInput;
     limit?: number;
     sortBy?: BlockSortByInput;
-  } = {}): Promise<(Block | null)[]> {
-    const data = await this.executeQuery<{ blocks?: (Block | null)[] | null }>(
+  } = {}): Promise<Block[]> {
+    const data = await this.executeQuery<{ blocks?: Block[] | null }>(
       BLOCKS_QUERY,
       {
         query: opts.query ?? null,

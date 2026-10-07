@@ -12,7 +12,7 @@ export type Scalars = {
 
 export type ActionData = {
   accountUpdateId: Scalars['String']['output'];
-  data: Array<Maybe<Scalars['String']['output']>>;
+  data: Array<Scalars['String']['output']>;
   transactionInfo: Maybe<TransactionInfo>;
 };
 
@@ -37,7 +37,7 @@ export type ActionFilterOptionsInput = {
 };
 
 export type ActionOutput = {
-  actionData: Maybe<Array<Maybe<ActionData>>>;
+  actionData: Maybe<Array<ActionData>>;
   actionState: ActionStates;
   blockInfo: Maybe<BlockInfo>;
   transactionInfo: Maybe<TransactionInfo>;
@@ -110,7 +110,7 @@ export type BlockTransactions = {
 
 export type EventData = {
   accountUpdateId: Scalars['String']['output'];
-  data: Array<Maybe<Scalars['String']['output']>>;
+  data: Array<Scalars['String']['output']>;
   transactionInfo: Maybe<TransactionInfo>;
 };
 
@@ -132,7 +132,7 @@ export type EventFilterOptionsInput = {
 
 export type EventOutput = {
   blockInfo: Maybe<BlockInfo>;
-  eventData: Maybe<Array<Maybe<EventData>>>;
+  eventData: Maybe<Array<EventData>>;
 };
 
 export type FeeTransfer = {
@@ -153,11 +153,24 @@ export type NetworkStateOutput = {
 };
 
 export type Query = {
-  actions: Array<Maybe<ActionOutput>>;
-  blocks: Array<Maybe<Block>>;
-  events: Array<Maybe<EventOutput>>;
+  actions: Array<ActionOutput>;
+  blocks: Array<Block>;
+  events: Array<EventOutput>;
   networkState: NetworkStateOutput;
+  /**
+   * The `MAJOR.MINOR` version of this schema.
+   *
+   * Clients compare it with the schema version they were built against: an equal
+   * major means the contract they code against still holds, and a higher minor
+   * means this server has additive changes they may not know about yet.
+   *
+   * Always available, even when `ENABLED_QUERIES` restricts which data queries
+   * this server exposes — a compatibility check that can itself be switched off
+   * is of no use to a client.
+   */
+  schemaVersion: Scalars['String']['output'];
   verificationKeyUpdates: Array<VerificationKeyUpdate>;
+  zkappCommands: Array<ZkappCommandOutput>;
 };
 
 
@@ -182,13 +195,18 @@ export type QueryVerificationKeyUpdatesArgs = {
   input: VerificationKeyUpdateFilterInput;
 };
 
+
+export type QueryZkappCommandsArgs = {
+  input: ZkappCommandFilterOptionsInput;
+};
+
 export type TransactionInfo = {
   authorizationKind: Scalars['String']['output'];
   hash: Scalars['String']['output'];
   memo: Scalars['String']['output'];
   sequenceNumber: Scalars['Int']['output'];
   status: Scalars['String']['output'];
-  zkappAccountUpdateIds: Array<Maybe<Scalars['Int']['output']>>;
+  zkappAccountUpdateIds: Array<Scalars['Int']['output']>;
 };
 
 export type UserCommand = {
@@ -233,4 +251,72 @@ export type ZkAppCommand = {
   hash: Scalars['String']['output'];
   memo: Scalars['String']['output'];
   status: Scalars['String']['output'];
+};
+
+export type ZkappAccountPrecondition = {
+  actionState: Maybe<ZkappFieldArray>;
+  isNew: Maybe<Scalars['Boolean']['output']>;
+  provedState: Maybe<Scalars['Boolean']['output']>;
+  state: Maybe<ZkappFieldArray>;
+};
+
+export type ZkappAccountUpdateOutput = {
+  accountPrecondition: Maybe<ZkappAccountPrecondition>;
+  actions: Array<ZkappFieldArray>;
+  appState: Maybe<ZkappFieldArray>;
+  authorizationKind: Scalars['String']['output'];
+  balanceChange: Scalars['String']['output'];
+  callDepth: Scalars['Int']['output'];
+  events: Array<ZkappFieldArray>;
+  id: Scalars['String']['output'];
+  incrementNonce: Scalars['Boolean']['output'];
+  networkPrecondition: Maybe<ZkappNetworkPrecondition>;
+  publicKey: Scalars['String']['output'];
+  tokenId: Scalars['String']['output'];
+};
+
+/**
+ * Filter successful zkApp commands by block range.
+ *
+ * Both `from` and `to` are required. The range is bounded by `ZKAPP_COMMAND_RANGE_SIZE`, and the server may reject dense ranges that expand to too many account updates.
+ */
+export type ZkappCommandFilterOptionsInput = {
+  /** Optional account update public key filter. */
+  accountPublicKey?: InputMaybe<Scalars['String']['input']>;
+  blockStatus?: InputMaybe<BlockStatusFilter>;
+  /** Mina block height to filter zkApp commands from, inclusive */
+  from: Scalars['Int']['input'];
+  /** Mina block height to filter zkApp commands to, exclusive */
+  to: Scalars['Int']['input'];
+  /** Optional account update token id filter. */
+  tokenId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ZkappCommandOutput = {
+  accountUpdates: Array<ZkappAccountUpdateOutput>;
+  blockInfo: BlockInfo;
+  fee: Scalars['String']['output'];
+  feePayer: Scalars['String']['output'];
+  hash: Scalars['String']['output'];
+  memo: Scalars['String']['output'];
+  sequenceNumber: Scalars['Int']['output'];
+};
+
+/**
+ * Raw field array from the archive database.
+ *
+ * An empty `fields` array means the archive row exists but contains no field values.
+ * Nullable entries mean the corresponding nullable archive state slot has no field value.
+ */
+export type ZkappFieldArray = {
+  fields: Array<Maybe<Scalars['String']['output']>>;
+};
+
+export type ZkappGlobalSlotBounds = {
+  lowerBound: Maybe<Scalars['Int']['output']>;
+  upperBound: Maybe<Scalars['Int']['output']>;
+};
+
+export type ZkappNetworkPrecondition = {
+  globalSlotSinceGenesis: Maybe<ZkappGlobalSlotBounds>;
 };
