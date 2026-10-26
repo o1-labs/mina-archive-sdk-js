@@ -59,6 +59,7 @@ export type _MaxBlockHeightInfo = Expect<Equals<Hand.MaxBlockHeightInfo, Gen.Max
 export type _NetworkStateOutput = Expect<Equals<Hand.NetworkStateOutput, Gen.NetworkStateOutput>>;
 export type _TransactionInfo = Expect<Equals<Hand.TransactionInfo, Gen.TransactionInfo>>;
 export type _UserCommand = Expect<Equals<Hand.UserCommand, Gen.UserCommand>>;
+export type _UserCommandOutput = Expect<Equals<Hand.UserCommandOutput, Gen.UserCommandOutput>>;
 export type _VerificationKeyUpdate = Expect<
   Equals<Hand.VerificationKeyUpdate, Gen.VerificationKeyUpdate>
 >;
@@ -72,6 +73,9 @@ export type _ActionFilterOptionsInput = Expect<
 export type _BlockQueryInput = Expect<Equals<Hand.BlockQueryInput, Gen.BlockQueryInput>>;
 export type _EventFilterOptionsInput = Expect<
   Equals<Hand.EventFilterOptionsInput, Gen.EventFilterOptionsInput>
+>;
+export type _UserCommandFilterInput = Expect<
+  Equals<Hand.UserCommandFilterInput, Gen.UserCommandFilterInput>
 >;
 export type _VerificationKeyUpdateFilterInput = Expect<
   Equals<Hand.VerificationKeyUpdateFilterInput, Gen.VerificationKeyUpdateFilterInput>
@@ -93,6 +97,9 @@ export type _getActions = Expect<Equals<Returns<'getActions'>, Gen.Query['action
 export type _getBlocks = Expect<Equals<Returns<'getBlocks'>, Gen.Query['blocks']>>;
 export type _getNetworkState = Expect<
   Equals<Returns<'getNetworkState'>, Gen.Query['networkState']>
+>;
+export type _getUserCommands = Expect<
+  Equals<Returns<'getUserCommands'>, Gen.Query['userCommands']>
 >;
 export type _getVerificationKeyUpdates = Expect<
   Equals<Returns<'getVerificationKeyUpdates'>, Gen.Query['verificationKeyUpdates']>
