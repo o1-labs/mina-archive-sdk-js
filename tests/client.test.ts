@@ -188,6 +188,76 @@ test('getVerificationKeyUpdates: sends the filter as the input variable', async 
   assert.match(parsed.query, /verificationKeyUpdates\(input: \$input\)/);
 });
 
+test('getUserCommands: happy path', async () => {
+  const sample = [
+    {
+      blockInfo: {
+        height: 100,
+        stateHash: 'sh',
+        parentHash: 'ph',
+        ledgerHash: 'lh',
+        chainStatus: 'canonical',
+        timestamp: '0',
+        globalSlotSinceHardfork: 0,
+        globalSlotSinceGenesis: 0,
+        distanceFromMaxBlockHeight: 1,
+      },
+      sequenceNumber: 3,
+      hash: '5Jtv7W41Kj1SKvxhBM53NfFyTNgnn3nxcwnnBsEpDHSPKaSujHa2',
+      kind: 'payment',
+      feePayer: 'B62qtest',
+      from: 'B62qtest',
+      to: 'B62qother',
+      amount: '1000000000',
+      fee: '250000000',
+      memo: '',
+      nonce: 7,
+      status: 'applied',
+      failureReason: null,
+    },
+  ];
+  const client = new ArchiveClient('http://x/graphql', {
+    retries: 1,
+    fetch: fakeFetch([jsonResponse({ data: { userCommands: sample } })]),
+  });
+  const result = await client.getUserCommands({
+    address: 'B62qtest',
+    from: 1,
+    to: 1000,
+  });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].feePayer, 'B62qtest');
+  assert.equal(result[0].blockInfo.height, 100);
+  assert.equal(result[0].failureReason, null);
+});
+
+test('getUserCommands: sends the filter as the input variable', async () => {
+  let sentBody: string | null = null;
+  const captureFetch: typeof fetch = async (_url, init) => {
+    sentBody = init?.body as string;
+    return jsonResponse({ data: { userCommands: [] } });
+  };
+  const client = new ArchiveClient('http://x/graphql', {
+    retries: 1,
+    fetch: captureFetch,
+  });
+  await client.getUserCommands({
+    address: 'B62qtest',
+    from: 10,
+    to: 20,
+    status: 'CANONICAL',
+  });
+  assert.ok(sentBody);
+  const parsed = JSON.parse(sentBody);
+  assert.deepEqual(parsed.variables.input, {
+    address: 'B62qtest',
+    from: 10,
+    to: 20,
+    status: 'CANONICAL',
+  });
+  assert.match(parsed.query, /userCommands\(input: \$input\)/);
+});
+
 test('GraphQL error: throws GraphqlError, does not retry', async () => {
   let calls = 0;
   const f: typeof fetch = async () => {

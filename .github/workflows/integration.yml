@@ -74,6 +74,9 @@ jobs:
         env:
           PG_CONN: postgres://postgres:postgres@localhost:5432/archive_test
           PORT: '8080'
+          # Off by default upstream; without it the server drops `userCommands`
+          # from its schema and the SDK's getUserCommands test cannot run.
+          ENABLE_USER_COMMANDS_QUERY: 'true'
         run: |
           npm ci
           npm run build

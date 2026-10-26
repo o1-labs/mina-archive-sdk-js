@@ -45,6 +45,7 @@ export {
   BLOCKS_QUERY,
   EVENTS_QUERY,
   NETWORK_STATE_QUERY,
+  USER_COMMANDS_QUERY,
   VERIFICATION_KEY_UPDATES_QUERY,
 } from './queries.js';
 
@@ -67,6 +68,8 @@ export type {
   NetworkStateOutput,
   TransactionInfo,
   UserCommand,
+  UserCommandFilterInput,
+  UserCommandOutput,
   VerificationKeyUpdate,
   VerificationKeyUpdateFilterInput,
   ZkAppCommand,

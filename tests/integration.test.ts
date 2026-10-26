@@ -22,6 +22,13 @@ const FIXTURE_ADDRESS =
 const FIXTURE_VERIFICATION_KEY_HASH =
   '330109536550383627416201330124291596191867681867265169258470531313815097966';
 
+/**
+ * Fee payer, source and receiver of all 61 `user_commands` rows in the
+ * upstream fixture (`public_keys.id = 66`), all in blocks below height 25.
+ */
+const FIXTURE_USER_COMMAND_ADDRESS =
+  'B62qrCV2xfWipHVW7KvdKSqXVqbTJLs4oNGhuDp8Ag34vy57mN4pcEi';
+
 if (!URI) {
   test('skip: ARCHIVE_GRAPHQL_URI not set', () => {
     assert.ok(true);
@@ -96,6 +103,26 @@ if (!URI) {
     assert.ok(Array.isArray(updates));
     for (const update of updates) {
       assert.equal(update.verificationKeyHash, FIXTURE_VERIFICATION_KEY_HASH);
+    }
+  });
+
+  test('userCommands query returns the fixture account\'s commands', async () => {
+    // Needs ENABLE_USER_COMMANDS_QUERY=true on the server, which
+    // integration.yml sets; a stock server rejects the field.
+    const commands = await client.getUserCommands({
+      address: FIXTURE_USER_COMMAND_ADDRESS,
+      from: 1,
+      to: 1000,
+    });
+    assert.ok(commands.length > 0, 'the fixture holds 61 user commands');
+    for (const command of commands) {
+      assert.ok(command.blockInfo.height > 0);
+      assert.ok(
+        [command.feePayer, command.from, command.to].includes(
+          FIXTURE_USER_COMMAND_ADDRESS,
+        ),
+        'the account is fee payer, source or receiver',
+      );
     }
   });
 }

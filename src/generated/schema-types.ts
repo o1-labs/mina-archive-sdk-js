@@ -169,6 +169,7 @@ export type Query = {
    * is of no use to a client.
    */
   schemaVersion: Scalars['String']['output'];
+  userCommands: Array<UserCommandOutput>;
   verificationKeyUpdates: Array<VerificationKeyUpdate>;
   zkappCommands: Array<ZkappCommandOutput>;
 };
@@ -188,6 +189,11 @@ export type QueryBlocksArgs = {
 
 export type QueryEventsArgs = {
   input: EventFilterOptionsInput;
+};
+
+
+export type QueryUserCommandsArgs = {
+  input: UserCommandFilterInput;
 };
 
 
@@ -218,6 +224,51 @@ export type UserCommand = {
   kind: Scalars['String']['output'];
   memo: Scalars['String']['output'];
   nonce: Scalars['Int']['output'];
+  status: Scalars['String']['output'];
+  to: Scalars['String']['output'];
+};
+
+/**
+ * Find the user commands (payments and delegations) of one account.
+ *
+ * The block range is required and limited by the server's configured maximum.
+ * `from` is inclusive and `to` is exclusive. A range that holds more than the
+ * server's user command limit for the account is rejected.
+ */
+export type UserCommandFilterInput = {
+  /**
+   * Public key of the account. A command is returned when the account is its fee
+   * payer, its source or its receiver.
+   */
+  address: Scalars['String']['input'];
+  /** Mina block height to search from, inclusive */
+  from: Scalars['Int']['input'];
+  status?: InputMaybe<BlockStatusFilter>;
+  /** Mina block height to search to, exclusive */
+  to: Scalars['Int']['input'];
+};
+
+/**
+ * A payment or a stake delegation that involves an account, with the block that
+ * carries it. A command that sits in several blocks of the result, such as two
+ * competing pending blocks, is returned once for each block.
+ */
+export type UserCommandOutput = {
+  /** Amount in nanomina. `0` for a delegation. */
+  amount: Scalars['String']['output'];
+  blockInfo: BlockInfo;
+  failureReason: Maybe<Scalars['String']['output']>;
+  fee: Scalars['String']['output'];
+  feePayer: Scalars['String']['output'];
+  from: Scalars['String']['output'];
+  hash: Scalars['String']['output'];
+  /** `payment` or `delegation` */
+  kind: Scalars['String']['output'];
+  memo: Scalars['String']['output'];
+  nonce: Scalars['Int']['output'];
+  /** Position of the command in its block */
+  sequenceNumber: Scalars['Int']['output'];
+  /** `applied` or `failed` */
   status: Scalars['String']['output'];
   to: Scalars['String']['output'];
 };

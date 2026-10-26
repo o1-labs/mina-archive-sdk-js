@@ -21,6 +21,7 @@ import type {
   EventData,
   EventOutput,
   TransactionInfo,
+  UserCommandOutput,
   VerificationKeyUpdate,
 } from '../src/types.js';
 
@@ -30,6 +31,7 @@ type Events = Awaited<ReturnType<ArchiveClient['getEvents']>>;
 type Actions = Awaited<ReturnType<ArchiveClient['getActions']>>;
 type Blocks = Awaited<ReturnType<ArchiveClient['getBlocks']>>;
 type VkUpdates = Awaited<ReturnType<ArchiveClient['getVerificationKeyUpdates']>>;
+type UserCommands = Awaited<ReturnType<ArchiveClient['getUserCommands']>>;
 
 // Non-null elements: a `null` element must NOT compile.
 // @ts-expect-error `events: [EventOutput!]!`
@@ -50,6 +52,8 @@ const _eventGroup: EventOutput['eventData'] = [null];
 const _actionGroup: ActionOutput['actionData'] = [null];
 // @ts-expect-error `verificationKeyUpdates: [VerificationKeyUpdate!]!`
 const _vkUpdates: VkUpdates = [null];
+// @ts-expect-error `userCommands: [UserCommandOutput!]!`
+const _userCommands: UserCommands = [null];
 
 // The outer list of these two stays nullable.
 const _eventGroupNull: EventOutput['eventData'] = null;
@@ -58,6 +62,7 @@ const _actionGroupNull: ActionOutput['actionData'] = null;
 // The element types are exactly the non-null types.
 const _blocksOk: Blocks = [] as Block[];
 const _vkUpdatesOk: VkUpdates = [] as VerificationKeyUpdate[];
+const _userCommandsOk: UserCommands = [] as UserCommandOutput[];
 
 void [
   _events,
@@ -69,10 +74,12 @@ void [
   _eventGroup,
   _actionGroup,
   _vkUpdates,
+  _userCommands,
   _eventGroupNull,
   _actionGroupNull,
   _blocksOk,
   _vkUpdatesOk,
+  _userCommandsOk,
 ];
 
 // -- Runtime --

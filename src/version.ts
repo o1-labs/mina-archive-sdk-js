@@ -6,4 +6,4 @@
  * a higher minor only adds features, which this SDK may not wrap yet. Compare
  * this constant with the server's `schemaVersion` to check compatibility.
  */
-export const SCHEMA_VERSION = '2.0';
+export const SCHEMA_VERSION = '2.1';

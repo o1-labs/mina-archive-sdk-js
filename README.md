@@ -59,6 +59,7 @@ Each method on `ArchiveClient` maps 1:1 to a GraphQL query in the [Archive-Node-
 | `getNetworkState()` | `NetworkStateOutput` | Archive's max canonical and pending block heights. |
 | `getBlocks({ query?, limit?, sortBy? })` | `Block[]` | Blocks filtered by height/date range and chain status. Transaction detail needs `ENABLE_BLOCK_TRANSACTION_DETAILS` on the server — see below. |
 | `getVerificationKeyUpdates(input)` | `VerificationKeyUpdate[]` | Applied account updates that set a given verification key, within a required block range. |
+| `getUserCommands(input)` | `UserCommandOutput[]` | Payments and delegations of one account (as fee payer, source or receiver), within a required block range. Needs `ENABLE_USER_COMMANDS_QUERY=true` on the server. |
 | `query(gql)` | builder | Run arbitrary GraphQL through the same retry path. |
 | `executeQuery(gql, vars, name)` | `unknown` | Low-level escape hatch returning the raw `data` field. |
 
@@ -293,7 +294,7 @@ The SDK exports the schema version it speaks:
 
 ```ts
 import { SCHEMA_VERSION } from '@o1-labs/mina-archive-sdk';
-// '2.0' — the Archive-Node-API schema major.minor
+// '2.1' — the Archive-Node-API schema major.minor
 ```
 
 The Archive-Node-API server, its schema and this SDK share one major version.
@@ -309,6 +310,13 @@ Within that major, the package version is semver about the SDK's own surface:
 | **Major** | Follows the server and schema major. |
 | **Minor** | Additive: a new query, a new option, a new helper. |
 | **Patch** | Fixes, docs, dependencies. |
+
+### 2.1
+
+2.1.0 speaks schema 2.1, which adds the `userCommands` query. The SDK wraps it
+as `getUserCommands`; the server exposes it only when it runs Archive-Node-API
+2.1.0 or later with `ENABLE_USER_COMMANDS_QUERY=true`. Every other method is
+unchanged and keeps working against a 2.0 server.
 
 ### Migrating from 1.x to 2.0
 

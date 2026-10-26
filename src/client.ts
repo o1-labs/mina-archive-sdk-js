@@ -18,6 +18,7 @@ import {
   BLOCKS_QUERY,
   EVENTS_QUERY,
   NETWORK_STATE_QUERY,
+  USER_COMMANDS_QUERY,
   VERIFICATION_KEY_UPDATES_QUERY,
 } from './queries.js';
 import type {
@@ -29,6 +30,8 @@ import type {
   EventFilterOptionsInput,
   EventOutput,
   NetworkStateOutput,
+  UserCommandFilterInput,
+  UserCommandOutput,
   VerificationKeyUpdate,
   VerificationKeyUpdateFilterInput,
 } from './types.js';
@@ -326,6 +329,30 @@ export class ArchiveClient {
       );
     }
     return data.verificationKeyUpdates;
+  }
+
+  /**
+   * Find the user commands (payments and delegations) of one account.
+   *
+   * The block range is required and the server caps its width
+   * (`BLOCK_RANGE_SIZE`). A range that holds more than `USER_COMMAND_LIMIT`
+   * commands for the account is rejected, so walk a wide history in pages
+   * rather than in one call.
+   *
+   * The query is off unless the server sets `ENABLE_USER_COMMANDS_QUERY=true`.
+   * A stock server answers with a {@link GraphqlError} whose message is
+   * `Cannot query field "userCommands"`.
+   */
+  async getUserCommands(
+    input: UserCommandFilterInput,
+  ): Promise<UserCommandOutput[]> {
+    const data = await this.executeQuery<{
+      userCommands?: UserCommandOutput[] | null;
+    }>(USER_COMMANDS_QUERY, { input }, 'getUserCommands');
+    if (!data.userCommands) {
+      throw new MissingFieldError('getUserCommands', 'userCommands');
+    }
+    return data.userCommands;
   }
 }
 

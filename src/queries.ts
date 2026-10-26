@@ -161,3 +161,33 @@ export const VERIFICATION_KEY_UPDATES_QUERY = `
     }
   }
 `;
+
+export const USER_COMMANDS_QUERY = `
+  query GetUserCommands($input: UserCommandFilterInput!) {
+    userCommands(input: $input) {
+      blockInfo {
+        height
+        stateHash
+        parentHash
+        ledgerHash
+        chainStatus
+        timestamp
+        globalSlotSinceHardfork
+        globalSlotSinceGenesis
+        distanceFromMaxBlockHeight
+      }
+      sequenceNumber
+      hash
+      kind
+      feePayer
+      from
+      to
+      amount
+      fee
+      memo
+      nonce
+      status
+      failureReason
+    }
+  }
+`;

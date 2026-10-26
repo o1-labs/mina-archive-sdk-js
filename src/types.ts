@@ -59,6 +59,26 @@ export interface VerificationKeyUpdateFilterInput {
   status?: BlockStatusFilter | null;
 }
 
+/**
+ * Find the user commands (payments and delegations) of one account.
+ *
+ * The block range is required and limited by the server's configured
+ * maximum. `from` is inclusive and `to` is exclusive. A range that holds more
+ * than the server's user command limit for the account is rejected.
+ */
+export interface UserCommandFilterInput {
+  /**
+   * Public key of the account. A command is returned when the account is its
+   * fee payer, its source or its receiver.
+   */
+  address: string;
+  /** Mina block height to search from, inclusive. */
+  from: number;
+  /** Mina block height to search to, exclusive. */
+  to: number;
+  status?: BlockStatusFilter | null;
+}
+
 export interface BlockQueryInput {
   blockHeight_gte?: number | null;
   blockHeight_lt?: number | null;
@@ -141,6 +161,32 @@ export interface VerificationKeyUpdate {
   verificationKeyHash: string;
   blockInfo: BlockInfo;
   transactionInfo: TransactionInfo;
+}
+
+/**
+ * A payment or a stake delegation that involves an account, with the block
+ * that carries it. A command that sits in several blocks of the result, such
+ * as two competing pending blocks, is returned once for each block.
+ */
+export interface UserCommandOutput {
+  blockInfo: BlockInfo;
+  /** Position of the command in its block. */
+  sequenceNumber: number;
+  hash: string;
+  /** `payment` or `delegation`. */
+  kind: string;
+  feePayer: string;
+  from: string;
+  to: string;
+  /** Amount in nanomina as a decimal string. `0` for a delegation. */
+  amount: string;
+  /** Nanomina as a decimal string. */
+  fee: string;
+  memo: string;
+  nonce: number;
+  /** `applied` or `failed`. */
+  status: string;
+  failureReason: string | null;
 }
 
 export interface MaxBlockHeightInfo {
